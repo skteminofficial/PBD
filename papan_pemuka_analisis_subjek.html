@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Papan Pemuka Analisis & Pembentangan Subjek (PBD) - SK TEMIN</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            .print-full { width: 100% !important; margin: 0 !important; padding: 0 !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Toast Notification -->
+    <div id="toast-notification" class="fixed top-5 right-5 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl z-50 transform -translate-y-24 opacity-0 transition-all duration-300 flex items-center gap-3 font-semibold text-sm pointer-events-none">
+        <i class="fa-solid fa-circle-check text-lg"></i>
+        <span id="toast-message">Data berjaya dikemaskini!</span>
+    </div>
+
+    <!-- Header Section -->
+    <header class="bg-indigo-900 text-white shadow-lg sticky top-0 z-30 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center space-x-3">
+                <img src="https://raw.githubusercontent.com/skteminofficial/iddelima/main/logo.png" 
+                     onerror="this.onerror=null; this.src='https://placehold.co/100x100/4f46e5/ffffff?text=SK+TEMIN';" 
+                     alt="Logo SK Temin" 
+                     class="w-11 h-11 object-contain rounded-xl bg-white p-1 shadow-md border border-indigo-400/30">
+                <div>
+                    <div class="flex flex-wrap items-center gap-2 mb-0.5">
+                        <span class="text-xs font-extrabold uppercase tracking-wider bg-amber-400 text-slate-900 px-2.5 py-0.5 rounded-md shadow-sm" id="school-name-display">
+                            SEKOLAH KEBANGSAAN TEMIN
+                        </span>
+                        <div class="flex items-center gap-1.5 bg-indigo-950/90 px-2.5 py-0.5 rounded-md border border-indigo-700/80 text-xs shadow-inner">
+                            <i class="fa-solid fa-calendar-days text-amber-400"></i>
+                            <span class="text-indigo-200 font-semibold">SESI:</span>
+                            <input type="text" id="header-year-input" value="2026 / 2027" onchange="window.updateSchoolYear(this.value)" title="Klik untuk edit Sesi" class="bg-indigo-900/80 text-amber-300 font-bold focus:bg-indigo-800 focus:outline-none focus:ring-1 focus:ring-amber-400 px-2 py-0.5 rounded w-28 text-xs border border-indigo-600 hover:border-amber-400 text-center transition">
+                        </div>
+                    </div>
+                    <h1 class="text-base sm:text-lg font-bold leading-tight">Papan Pemuka Analisis PBD (TP 1 - TP 6)</h1>
+                </div>
+            </div>
+
+            <!-- Header Action Buttons -->
+            <div class="flex items-center space-x-2 text-xs sm:text-sm flex-wrap gap-y-1">
+                <button onclick="window.toggleDataModal()" class="px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white transition flex items-center gap-1.5 border border-indigo-500 font-semibold shadow-sm">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span>Kemaskini Data</span>
+                </button>
+                <button onclick="window.exportBackupJSON()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition flex items-center gap-1 text-xs" title="Muat turun fail backup JSON ke komputer/drive anda">
+                    <i class="fa-solid fa-download"></i>
+                    <span class="hidden md:inline">Eksport Backup</span>
+                </button>
+                <button onclick="document.getElementById('import-file-input').click()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 transition flex items-center gap-1 text-xs" title="Muat naik fail backup JSON">
+                    <i class="fa-solid fa-upload"></i>
+                    <span class="hidden md:inline">Import Backup</span>
+                </button>
+                <input type="file" id="import-file-input" accept=".json" class="hidden" onchange="window.importBackupJSON(event)">
+                <button onclick="window.startPresentationMode()" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center gap-1.5 font-semibold shadow-md">
+                    <i class="fa-solid fa-desktop"></i>
+                    <span>Pembentangan</span>
+                </button>
+                <button onclick="window.print()" class="px-2.5 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 transition flex items-center gap-1">
+                    <i class="fa-solid fa-print"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs for Subjects -->
+    <nav class="bg-white border-b border-slate-200 shadow-sm sticky top-[61px] z-20 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center space-x-2 overflow-x-auto py-2.5 custom-scrollbar" id="subject-tabs-container">
+                <!-- Subject Tabs populated dynamically -->
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Dashboard Body -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Top Banner / Summary Card -->
+        <div class="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="flex items-start sm:items-center gap-4">
+                <img src="https://raw.githubusercontent.com/skteminofficial/iddelima/main/logo.png" 
+                     onerror="this.onerror=null; this.src='https://placehold.co/100x100/4f46e5/ffffff?text=SK+TEMIN';" 
+                     alt="Logo SK Temin" 
+                     class="w-14 h-14 sm:w-16 sm:h-16 object-contain rounded-2xl bg-white p-1.5 shadow-xl border border-indigo-300/30 shrink-0">
+                <div>
+                    <div class="flex flex-wrap items-center gap-2 mb-2">
+                        <span class="inline-block px-3 py-1 bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-bold rounded-full">
+                            <i class="fa-solid fa-building-columns mr-1"></i> SK TEMIN
+                        </span>
+                        <span class="inline-block px-3 py-1 bg-indigo-500/30 border border-indigo-400/30 text-indigo-200 text-xs font-semibold rounded-full" id="selected-subject-badge">
+                            Keseluruhan Subjek
+                        </span>
+                        <span class="inline-block px-3 py-1 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold rounded-full" id="banner-year-badge">
+                            Sesi 2026 / 2027
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2 group">
+                        <input type="text" id="report-title-input" value="ANALISIS PBD PERTENGAHAN TAHUN 2026 - KESELURUHAN MATA PELAJARAN" 
+                               onchange="window.updateReportTitle(this.value)"
+                               title="Klik untuk ubah Tajuk Laporan"
+                               class="text-xl sm:text-2xl font-black bg-transparent text-white border-b border-dashed border-indigo-400/50 focus:border-amber-400 focus:outline-none focus:bg-indigo-950/60 px-2 py-1 rounded w-full transition">
+                        <i class="fa-solid fa-pen-to-square text-indigo-300 text-xs opacity-70 group-hover:opacity-100"></i>
+                    </div>
+                    <p class="text-indigo-200 text-sm mt-1 max-w-2xl" id="selected-subject-desc">
+                        Analisis peratusan Menguasai (% M: TP3-TP6) vs Tidak Menguasai (% TM: TP1-TP2) dan pelan intervensi murid.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-3 rounded-xl border border-white/10 self-stretch md:self-auto justify-around shrink-0">
+                <div class="text-center px-2">
+                    <p class="text-xs text-indigo-200 font-medium">Jumlah Calon</p>
+                    <p class="text-2xl font-black text-white" id="kpi-total-students">0</p>
+                </div>
+                <div class="h-10 w-px bg-white/20"></div>
+                <div class="text-center px-2">
+                    <p class="text-xs text-indigo-200 font-medium">% Menguasai (M)</p>
+                    <p class="text-2xl font-black text-emerald-400" id="kpi-pass-rate">0%</p>
+                    <p class="text-[10px] text-emerald-200 font-semibold">(TP 3 - TP 6)</p>
+                </div>
+                <div class="h-10 w-px bg-white/20"></div>
+                <div class="text-center px-2">
+                    <p class="text-xs text-indigo-200 font-medium">% Tidak Menguasai (TM)</p>
+                    <p class="text-2xl font-black text-rose-400" id="kpi-fail-rate">0%</p>
+                    <p class="text-[10px] text-rose-200 font-semibold">(TP 1 & TP 2)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric Cards Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Card 1: Peratus Menguasai -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200/80 hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">% Menguasai (TP 3 - TP 6)</p>
+                    <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-baseline justify-between">
+                    <span class="text-3xl font-extrabold text-emerald-600" id="card-pass-pct">0%</span>
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded text-emerald-700 bg-emerald-50 border border-emerald-200" id="card-pass-count">
+                        0 / 0 Murid
+                    </span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2.5 mt-2.5 overflow-hidden">
+                    <div class="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" id="card-pass-bar" style="width: 0%"></div>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-2">Mencapai Tahap Penguasaan Minimum</p>
+            </div>
+
+            <!-- Card 2: Peratus Tidak Menguasai -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200/80 hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">% Tidak Menguasai (TP 1 - TP 2)</p>
+                    <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-baseline justify-between">
+                    <span class="text-3xl font-extrabold text-rose-600" id="card-fail-pct">0%</span>
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded text-rose-700 bg-rose-50 border border-rose-200" id="card-fail-count">
+                        0 / 0 Murid
+                    </span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2.5 mt-2.5 overflow-hidden">
+                    <div class="bg-rose-500 h-2.5 rounded-full transition-all duration-500" id="card-fail-bar" style="width: 0%"></div>
+                </div>
+                <p class="text-[11px] text-rose-600 font-medium mt-2">Memerlukan Bimbingan & Intervensi</p>
+            </div>
+
+            <!-- Card 3: Penguasaan Tinggi -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200/80 hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Penguasaan Tinggi (TP 5-6)</p>
+                    <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                        <i class="fa-solid fa-star"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-baseline justify-between">
+                    <span class="text-3xl font-extrabold text-slate-800" id="card-cemerlang">0</span>
+                    <span class="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200" id="card-cemerlang-pct">0%</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2.5 mt-2.5 overflow-hidden">
+                    <div class="bg-amber-500 h-2.5 rounded-full transition-all duration-500" id="card-cemerlang-bar" style="width: 0%"></div>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-2">Tahap Terpuji & Mithali</p>
+            </div>
+
+            <!-- Card 4: Penguasaan Asas -->
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200/80 hover:shadow-md transition">
+                <div class="flex items-center justify-between">
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Penguasaan Asas (TP 3-4)</p>
+                    <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-baseline justify-between">
+                    <span class="text-3xl font-extrabold text-slate-800" id="card-asas">0</span>
+                    <span class="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200" id="card-asas-pct">0%</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2.5 mt-2.5 overflow-hidden">
+                    <div class="bg-blue-500 h-2.5 rounded-full transition-all duration-500" id="card-asas-bar" style="width: 0%"></div>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-2">Memuaskan & Baik</p>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-col">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-base" id="main-chart-title">Taburan Tahap Penguasaan (TP 1 - TP 6)</h3>
+                        <p class="text-xs text-slate-500">Analisis bilangan murid mengikut Tahap Penguasaan PBD</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <select id="chart-type-selector" onchange="window.updateMainChartType()" class="text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium">
+                            <option value="bar">Graf Bar</option>
+                            <option value="line">Graf Garis Trend</option>
+                            <option value="doughnut">Carta Pie/Donut</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="relative flex-grow min-h-[300px] sm:min-h-[340px] w-full">
+                    <canvas id="mainChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-col">
+                <div class="mb-4 pb-3 border-b border-slate-100">
+                    <h3 class="font-bold text-slate-800 text-base" id="secondary-chart-title">Peratus Menguasai (% M) Antara Subjek</h3>
+                    <p class="text-xs text-slate-500">Analisis Perbandingan Standard PBD</p>
+                </div>
+                <div class="relative flex-grow min-h-[280px] w-full flex items-center justify-center">
+                    <canvas id="secondaryChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Table & Interventions -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-base" id="table-card-title">Jadual Ringkasan Tahap Penguasaan (TP 1 - TP 6)</h3>
+                        <p class="text-xs text-slate-500" id="table-card-subtitle">Format Rasmi Analisis PBD KPM</p>
+                    </div>
+                    <span class="text-xs text-slate-500 font-semibold bg-slate-100 px-2.5 py-1 rounded-lg">PBD 2026 PDF Standard</span>
+                </div>
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-xs text-left text-slate-600 border-collapse">
+                        <thead class="text-xs text-slate-700 uppercase bg-slate-100/90 rounded-lg" id="grade-table-head">
+                            <!-- Populated dynamically -->
+                        </thead>
+                        <tbody id="grade-table-body" class="divide-y divide-slate-100">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-col">
+                <h3 class="font-bold text-slate-800 text-base mb-3 pb-2 border-b border-slate-100">
+                    Analisis & Pelan Intervensi PBD
+                </h3>
+                
+                <div class="space-y-4 text-xs overflow-y-auto max-h-[380px] pr-1 custom-scrollbar">
+                    <div class="p-3 bg-emerald-50/60 rounded-xl border border-emerald-100">
+                        <div class="flex items-center gap-2 text-emerald-800 font-bold mb-1">
+                            <i class="fa-solid fa-thumbs-up"></i>
+                            <span>Kekuatan & Murid TP 5-6:</span>
+                        </div>
+                        <ul class="list-disc list-inside text-emerald-900 space-y-1" id="analysis-strengths"></ul>
+                    </div>
+
+                    <div class="p-3 bg-rose-50/60 rounded-xl border border-rose-100">
+                        <div class="flex items-center gap-2 text-rose-800 font-bold mb-1">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <span>Murid TM (TP 1 & TP 2 - Perlu Bimbingan):</span>
+                        </div>
+                        <ul class="list-disc list-inside text-rose-900 space-y-1" id="analysis-weaknesses"></ul>
+                    </div>
+
+                    <div class="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100">
+                        <div class="flex items-center gap-2 text-indigo-800 font-bold mb-1">
+                            <i class="fa-solid fa-lightbulb"></i>
+                            <span>Pelan Bimbingan & Intervensi PBD:</span>
+                        </div>
+                        <ul class="list-disc list-inside text-indigo-900 space-y-1" id="analysis-actions"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Presentation Overlay View -->
+    <div id="presentation-overlay" class="fixed inset-0 bg-slate-950 text-white z-50 hidden flex-col justify-between p-6 md:p-10 transition-all">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div class="flex items-center space-x-3">
+                <span class="px-3 py-1 bg-indigo-600 rounded-md text-xs font-bold uppercase tracking-wide">MOD PEMBENTANGAN</span>
+                <span id="pres-subject-title" class="text-xl font-extrabold text-indigo-300">Bahasa Melayu</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span id="pres-slide-indicator" class="text-sm font-medium text-slate-400">Slaid 1 / 3</span>
+                <button onclick="window.exitPresentationMode()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-2">
+                    <i class="fa-solid fa-xmark"></i> Keluar (ESC)
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-grow my-6 flex flex-col justify-center items-center max-w-6xl mx-auto w-full" id="pres-slide-content"></div>
+
+        <div class="flex items-center justify-between border-t border-slate-800 pt-4">
+            <button onclick="window.prevSlide()" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold flex items-center gap-2 text-sm">
+                <i class="fa-solid fa-arrow-left"></i> Slaid Sebelum
+            </button>
+
+            <div class="flex items-center space-x-2" id="pres-dots">
+                <div class="w-3 h-3 rounded-full bg-indigo-500 cursor-pointer" onclick="window.goToSlide(0)"></div>
+                <div class="w-3 h-3 rounded-full bg-slate-700 cursor-pointer" onclick="window.goToSlide(1)"></div>
+                <div class="w-3 h-3 rounded-full bg-slate-700 cursor-pointer" onclick="window.goToSlide(2)"></div>
+            </div>
+
+            <button onclick="window.nextSlide()" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold flex items-center gap-2 text-sm shadow-lg">
+                Slaid Seterusnya <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Edit Data Modal -->
+    <div id="data-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                <div class="flex items-center gap-2.5">
+                    <img src="https://raw.githubusercontent.com/skteminofficial/iddelima/main/logo.png" 
+                         onerror="this.onerror=null; this.src='https://placehold.co/100x100/4f46e5/ffffff?text=SK+TEMIN';" 
+                         alt="Logo SK Temin" 
+                         class="w-10 h-10 object-contain rounded-lg bg-slate-100 p-1 border border-slate-200">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-lg leading-tight">Borang Kemaskini Data PBD Subjek</h3>
+                        <p class="text-xs text-slate-500">Masukkan bilangan murid TP1 - TP6 dari dokumen/PDF anda</p>
+                    </div>
+                </div>
+                <button onclick="window.toggleDataModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="edit-data-form" onsubmit="window.saveDataFromModal(event)" class="space-y-4 text-xs">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="sm:col-span-2">
+                        <label class="block font-semibold text-slate-700 mb-1">Pilih Subjek Untuk Dikemaskini:</label>
+                        <select id="modal-subject-select" onchange="window.loadModalSubjectData()" class="w-full border border-slate-300 rounded-lg p-2.5 bg-slate-50 font-medium text-sm focus:ring-2 focus:ring-indigo-500">
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Sesi Persekolahan:</label>
+                        <input type="text" id="modal-year-input" onchange="window.updateSchoolYear(this.value)" class="w-full border border-slate-300 rounded-lg p-2.5 bg-amber-50 font-bold text-slate-800 text-sm focus:ring-2 focus:ring-amber-500" placeholder="Contoh: 2026 / 2027">
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <label class="block font-bold text-slate-800 mb-2">Bilangan Murid Mengikut Tahap Penguasaan (TP 1 - TP 6):</label>
+                    <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                        <div>
+                            <label class="block text-center font-bold text-rose-600 mb-1">TP 1</label>
+                            <input type="number" id="tp-1" min="0" class="w-full border border-slate-300 text-center p-2 rounded-lg font-bold text-slate-800" value="0">
+                        </div>
+                        <div>
+                            <label class="block text-center font-bold text-orange-600 mb-1">TP 2</label>
+                            <input type="number" id="tp-2" min="0" class="w-full border border-slate-300 text-center p-2 rounded-lg font-bold text-slate-800" value="0">
+                        </div>
+                        <div>
+                            <label class="block text-center font-bold text-yellow-600 mb-1">TP 3</label>
+                            <input type="number" id="tp-3" min="0" class="w-full border border-slate-300 text-center p-2 rounded-lg font-bold text-slate-800" value="0">
+                        </div>
+                        <div>
+                            <label class="block text-center font-bold text-blue-600 mb-1">TP 4</label>
+                            <input type="number" id="tp-4" min="0" class="w-full border border-slate-300 text-center p-2 rounded-lg font-bold text-slate-800" value="0">
+                        </div>
+                        <div>
+                            <label class="block text-center font-bold text-indigo-600 mb-1">TP 5</label>
+                            <input type="number" id="tp-5" min="0" class="w-full border border-slate-300 text-center p-2 rounded-lg font-bold text-slate-800" value="0">
+                        </div>
+                        <div>
+                            <label class="block text-center font-bold text-emerald-600 mb-1">TP 6</label>
+                            <input type="number" id="tp-6" min="0" class="w-full border border-slate-300 text-center p-2 rounded-lg font-bold text-slate-800" value="0">
+                        </div>
+                    </div>
+
+                    <div class="mt-3 pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-slate-600 font-semibold text-[11px]">
+                        <div>Jumlah Murid: <span id="modal-calc-total" class="font-bold text-slate-900 text-xs">0</span></div>
+                        <div class="text-emerald-700">% Menguasai (TP3-6): <span id="modal-calc-pass" class="font-bold text-xs">0%</span></div>
+                        <div class="text-rose-700">% Tidak Menguasai (TP1-2): <span id="modal-calc-fail" class="font-bold text-xs">0%</span></div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Kekuatan / Catatan TP 5-6 (Pisahkan dengan tanda koma):</label>
+                        <input type="text" id="modal-strengths" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500" placeholder="Contoh: Menguasai kemahiran asas, Boleh membimbing rakan">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Murid TM / Kelemahan TP 1-2 (Pisahkan dengan tanda koma):</label>
+                        <input type="text" id="modal-weaknesses" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500" placeholder="Contoh: Belum menguasai asas bacaan, Perlu bimbingan guru secara individu">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Pelan Intervensi / Bimbingan (Pisahkan dengan tanda koma):</label>
+                        <input type="text" id="modal-actions" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500" placeholder="Contoh: Modul Bimbingan Asas, Program Rakan Sebaya">
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <button type="button" onclick="window.resetDataToDefault()" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold">
+                        <i class="fa-solid fa-rotate-left mr-1"></i> Reset Data PDF 2026
+                    </button>
+                    <div class="flex items-center space-x-2">
+                        <button type="button" onclick="window.toggleDataModal()" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 font-semibold">Batal</button>
+                        <button type="submit" class="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-md flex items-center gap-2">
+                            <i class="fa-solid fa-rotate"></i>
+                            <span>Simpan Data</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Exact Data from PDF ANALISIS PBD PERTENGAHAN TAHUN 2026 - SK TEMIN
+        const defaultSubjectData = [
+            {
+                id: 'all',
+                name: 'Keseluruhan',
+                code: 'SEMUA',
+                icon: 'fa-solid fa-chart-column',
+                tp: { 'TP 1': 11, 'TP 2': 315, 'TP 3': 1618, 'TP 4': 2822, 'TP 5': 1363, 'TP 6': 299 },
+                strengths: [
+                    'Majoriti murid (melebihi 90% bagi 11 daripada 12 subjek) berjaya mencapai Tahap Penguasaan Minimum (TP 3 - TP 6).',
+                    'Prestasi cemerlang dicatatkan dalam Pendidikan Muzik (99.71% M), Sejarah & RBT (99.72% M), PJPK (99.42% M), dan PSV (98.98% M).'
+                ],
+                weaknesses: [
+                    'Subjek Matematik dan Pendidikan Islam mencatatkan kadar Tidak Menguasai (TM: TP1 & TP2) tertinggi iaitu masing-masing 10.36% (71 murid) dan 9.36% (64 murid).',
+                    'Bahasa Inggeris (8.03% TM) dan Bahasa Melayu (7.74% TM) juga mempunyai kumpulan murid yang memerlukan bimbingan membaca dan menulis.'
+                ],
+                actions: [
+                    'Program Intervensi Berfokus bagi subjek Utama (Matematik, Pendidikan Islam, BM, & BI) khusus untuk kumpulan TP1 & TP2.',
+                    'Sesi Klinik Bimbingan Rakan Sebaya (Mentoring) memanfaatkan murid penguasaan tinggi (TP5 & TP6).',
+                    'Pemantauan berterusan instrumen Pentaksiran Bilik Darjah (PBD) pelbagai kaedah.'
+                ]
+            },
+            {
+                id: 'bm',
+                name: 'Bahasa Melayu',
+                code: 'BM',
+                icon: 'fa-solid fa-book-bookmark',
+                tp: { 'TP 1': 3, 'TP 2': 50, 'TP 3': 143, 'TP 4': 318, 'TP 5': 144, 'TP 6': 27 },
+                strengths: ['Seramai 632 murid (92.26%) menguasai sekurang-kurangnya TP 3.', 'Seramai 171 murid mencapai Penguasaan Tinggi (TP 5 & TP 6).'],
+                weaknesses: ['53 murid (7.74%) Tidak Menguasai (TM: TP 1 & TP 2) memerlukan bimbingan asas membaca dan bina ayat.'],
+                actions: ['Program "1 Hari 1 Ayat Kosa Kata".', 'Bimbingan rakan sebaya (Mentoring TP 5/6 bersama murid TM).']
+            },
+            {
+                id: 'bi',
+                name: 'Bahasa Inggeris',
+                code: 'BI',
+                icon: 'fa-solid fa-language',
+                tp: { 'TP 1': 2, 'TP 2': 53, 'TP 3': 274, 'TP 4': 231, 'TP 5': 101, 'TP 6': 24 },
+                strengths: ['Kadar Menguasai mencapai 91.97% (630 daripada 685 murid).'],
+                weaknesses: ['55 murid Tidak Menguasai (8.03%) terutamanya dalam kemahiran menulis (Writing) dan tatabahasa (Grammar).'],
+                actions: ['Daily Guided Writing Worksheets.', 'Phonics and Sight Words Drill for TP 1 & 2.']
+            },
+            {
+                id: 'math',
+                name: 'Matematik',
+                code: 'MM',
+                icon: 'fa-solid fa-calculator',
+                tp: { 'TP 1': 3, 'TP 2': 68, 'TP 3': 247, 'TP 4': 233, 'TP 5': 120, 'TP 6': 14 },
+                strengths: ['614 murid (89.64%) menguasai sekurang-kurangnya tahap minimum TP 3.'],
+                weaknesses: ['71 murid (10.36%) di tahap TP 1 & TP 2 memerlukan bimbingan fakta asas nombor dan kemahiran mengira.'],
+                actions: ['Klinik Asas Pengiraan (KAP).', 'Modul Kata Kunci Penyelesaian Masalah Matematik.']
+            },
+            {
+                id: 'sn',
+                name: 'Sains',
+                code: 'SAINS',
+                icon: 'fa-solid fa-flask',
+                tp: { 'TP 1': 1, 'TP 2': 44, 'TP 3': 256, 'TP 4': 256, 'TP 5': 103, 'TP 6': 25 },
+                strengths: ['93.43% murid (640 calon) mencapai tahap penguasaan MTM (TP 3 - TP 6).'],
+                weaknesses: ['45 murid Tidak Menguasai (6.57%) terutamanya dalam kemahiran proses sains.'],
+                actions: ['Buku Log Amali Berfokus KPS (Kemahiran Proses Sains).']
+            },
+            {
+                id: 'ba',
+                name: 'Bahasa Arab',
+                code: 'AR',
+                icon: 'fa-solid fa-pen-nib',
+                tp: { 'TP 1': 0, 'TP 2': 26, 'TP 3': 218, 'TP 4': 288, 'TP 5': 126, 'TP 6': 27 },
+                strengths: ['Pencapaian cemerlang 96.20% Menguasai (659 murid), Tiada murid TP 1.'],
+                weaknesses: ['26 murid (3.80%) di tahap TP 2 memerlukan latih tubi sebutan dan bacaan kosa kata.'],
+                actions: ['Modul Latih Tubi Mufradat Visual dan Sebutan Arab.']
+            },
+            {
+                id: 'psv',
+                name: 'Pendidikan Seni Visual',
+                code: 'PSV',
+                icon: 'fa-solid fa-palette',
+                tp: { 'TP 1': 0, 'TP 2': 7, 'TP 3': 98, 'TP 4': 402, 'TP 5': 171, 'TP 6': 7 },
+                strengths: ['Kadar penguasaan amat tinggi 98.98% (678 murid). Tiada murid TP 1.'],
+                weaknesses: ['Hanya 7 murid (1.02%) di tahap TP 2 yang kurang kemasan dalam hasil karya.'],
+                actions: ['Sesi Pembentangan Apresiasi Karya Seni secara berkumpulan.']
+            },
+            {
+                id: 'muzik',
+                name: 'Pendidikan Muzik',
+                code: 'PMZ',
+                icon: 'fa-solid fa-music',
+                tp: { 'TP 1': 0, 'TP 2': 2, 'TP 3': 96, 'TP 4': 446, 'TP 5': 131, 'TP 6': 10 },
+                strengths: ['Pencapaian cemerlang 99.71% Menguasai (683 murid). Hanya 2 murid TP 2.'],
+                weaknesses: ['Penguasaan notasi muzik bagi murid TP 2 & TP 3.'],
+                actions: ['Latihan Amali Rekorder / Perkusi secara berpasangan.']
+            },
+            {
+                id: 'pjpk',
+                name: 'Pendidikan Jasmani & Kesihatan',
+                code: 'PJPK',
+                icon: 'fa-solid fa-person-running',
+                tp: { 'TP 1': 0, 'TP 2': 4, 'TP 3': 104, 'TP 4': 369, 'TP 5': 184, 'TP 6': 24 },
+                strengths: ['99.42% murid (681 calon) menguasai TP 3 - TP 6.'],
+                weaknesses: ['4 murid (0.58%) di tahap TP 2 perlu bimbingan pergerakan motor.'],
+                actions: ['Modul Ringkas Nota Visual Pendidikan Kesihatan & Aktiviti Fizikal Terbimbing.']
+            },
+            {
+                id: 'pai',
+                name: 'Pendidikan Islam',
+                code: 'PAI',
+                icon: 'fa-solid fa-book-quran',
+                tp: { 'TP 1': 2, 'TP 2': 62, 'TP 3': 171, 'TP 4': 234, 'TP 5': 134, 'TP 6': 81 },
+                strengths: ['81 murid mencapai TP 6 (paling tinggi antara semua subjek), 90.64% MTM.'],
+                weaknesses: ['64 murid Tidak Menguasai (9.36%) terutamanya dalam aspek bacaan Al-Quran dan penulisan Jawi.'],
+                actions: ['Klinik Bimbingan Jawi & Kem Kemahiran Al-Quran (KFA).']
+            },
+            {
+                id: 'sej',
+                name: 'Sejarah',
+                code: 'SEJ',
+                icon: 'fa-solid fa-landmark',
+                tp: { 'TP 1': 0, 'TP 2': 1, 'TP 3': 91, 'TP 4': 135, 'TP 5': 89, 'TP 6': 39 },
+                strengths: ['Hampir sempurna 99.72% Menguasai (354/355 murid). Hanya 1 murid TP 2.'],
+                weaknesses: ['Pemahaman kronologi peristiwa sejarah bagi sebilangan murid TP 3.'],
+                actions: ['Peta Minda Grafik Kronologi Sejarah & Kuiz Interaktif.']
+            },
+            {
+                id: 'rbt',
+                name: 'Reka Bentuk & Teknologi',
+                code: 'RBT',
+                icon: 'fa-solid fa-gears',
+                tp: { 'TP 1': 0, 'TP 2': 1, 'TP 3': 14, 'TP 4': 160, 'TP 5': 159, 'TP 6': 21 },
+                strengths: ['99.72% Menguasai (354/355 murid). Dominan pada TP 4 (160) & TP 5 (159).'],
+                weaknesses: ['1 murid berada di TP 2 bagi kemahiran projek reka bentuk.'],
+                actions: ['Amali Terbimbing Penghasilan Projek & Pengaturcaraan RBT.']
+            },
+            {
+                id: 'moral',
+                name: 'Pendidikan Moral',
+                code: 'PM',
+                icon: 'fa-solid fa-hands-holding-child',
+                tp: { 'TP 1': 0, 'TP 2': 0, 'TP 3': 0, 'TP 4': 0, 'TP 5': 1, 'TP 6': 0 },
+                strengths: ['100% Menguasai (1 Murid - TP 5).'],
+                weaknesses: ['Tiada kelemahan ketara.'],
+                actions: ['Pengayaan dan Pengukuhan Amalan Nilai Murni.']
+            }
+        ];
+
+        let subjectData = [];
+        let currentSubjectId = 'all';
+        let mainChart = null;
+        let secondaryChart = null;
+        let currentChartType = 'bar';
+        let currentSlide = 0;
+        let schoolYear = '2026 / 2027';
+        let reportTitle = 'ANALISIS PBD PERTENGAHAN TAHUN 2026 - KESELURUHAN MATA PELAJARAN';
+
+        // Helper calculations
+        window.calculateStats = function(tp) {
+            const tp1 = tp['TP 1'] || 0;
+            const tp2 = tp['TP 2'] || 0;
+            const tp3 = tp['TP 3'] || 0;
+            const tp4 = tp['TP 4'] || 0;
+            const tp5 = tp['TP 5'] || 0;
+            const tp6 = tp['TP 6'] || 0;
+
+            const total = tp1 + tp2 + tp3 + tp4 + tp5 + tp6;
+            const tidakMenguasai = tp1 + tp2;
+            const menguasai = tp3 + tp4 + tp5 + tp6;
+            const cemerlang = tp5 + tp6;
+            const asas = tp3 + tp4;
+
+            const menguasaiPct = total > 0 ? ((menguasai / total) * 100).toFixed(2) : '0.00';
+            const tidakMenguasaiPct = total > 0 ? ((tidakMenguasai / total) * 100).toFixed(2) : '0.00';
+            const cemerlangPct = total > 0 ? ((cemerlang / total) * 100).toFixed(2) : '0.00';
+            const asasPct = total > 0 ? ((asas / total) * 100).toFixed(2) : '0.00';
+
+            return {
+                total,
+                menguasai,
+                tidakMenguasai,
+                cemerlang,
+                asas,
+                menguasaiPct,
+                tidakMenguasaiPct,
+                cemerlangPct,
+                asasPct
+            };
+        };
+
+        window.recalculateAggregates = function() {
+            const allSubj = subjectData.find(s => s.id === 'all');
+            if (!allSubj) return;
+
+            const agg = { 'TP 1': 0, 'TP 2': 0, 'TP 3': 0, 'TP 4': 0, 'TP 5': 0, 'TP 6': 0 };
+            subjectData.forEach(s => {
+                if (s.id !== 'all' && s.tp) {
+                    for (let key in agg) {
+                        agg[key] += (s.tp[key] || 0);
+                    }
+                }
+            });
+            allSubj.tp = agg;
+        };
+
+        window.showToast = function(msg) {
+            const toast = document.getElementById('toast-notification');
+            const toastMsg = document.getElementById('toast-message');
+            if (!toast || !toastMsg) return;
+            
+            toastMsg.textContent = msg;
+            toast.classList.remove('-translate-y-24', 'opacity-0', 'pointer-events-none');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('-translate-y-24', 'opacity-0', 'pointer-events-none');
+            }, 3000);
+        };
+
+        // Data Storage & Backup Features
+        window.exportBackupJSON = function() {
+            const backupPayload = {
+                schoolYear: schoolYear,
+                reportTitle: reportTitle,
+                subjectData: subjectData,
+                exportedAt: new Date().toISOString()
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupPayload, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `BACKUP_PBD_SK_TEMIN_${schoolYear.replace(/\s+/g, '_')}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+
+            window.showToast("Fail backup JSON telah dimuat turun!");
+        };
+
+        window.importBackupJSON = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (imported.subjectData) {
+                        subjectData = imported.subjectData;
+                        if (imported.schoolYear) schoolYear = imported.schoolYear;
+                        if (imported.reportTitle) reportTitle = imported.reportTitle;
+
+                        window.saveAllToLocalStorage();
+                        window.applySchoolYearToUI();
+                        window.renderTabs();
+                        window.renderDashboard();
+                        window.showToast("Data backup berjaya diimport sepenuhnya!");
+                    } else {
+                        window.showToast("Ralat: Format fail JSON tidak sah!");
+                    }
+                } catch(err) {
+                    console.error("Error importing JSON:", err);
+                    window.showToast("Ralat membaca fail JSON!");
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        window.saveAllToLocalStorage = function() {
+            try {
+                localStorage.setItem('pbd_dashboard_data', JSON.stringify(subjectData));
+                localStorage.setItem('pbd_dashboard_school_year', schoolYear);
+                localStorage.setItem('pbd_dashboard_report_title', reportTitle);
+            } catch(e) {
+                console.error("Error saving to localStorage:", e);
+            }
+        };
+
+        window.toggleDataModal = function() {
+            const modal = document.getElementById('data-modal');
+            if (modal) {
+                modal.classList.toggle('hidden');
+                if (!modal.classList.contains('hidden')) {
+                    window.loadModalSubjectData();
+                }
+            }
+        };
+
+        window.openModalForSubject = function(subjId) {
+            const select = document.getElementById('modal-subject-select');
+            if (select) {
+                select.value = subjId;
+            }
+            window.toggleDataModal();
+        };
+
+        window.updateSchoolYear = function(newYear) {
+            if (!newYear || !newYear.trim()) return;
+            schoolYear = newYear.trim();
+            window.saveAllToLocalStorage();
+            window.applySchoolYearToUI();
+            window.showToast("Sesi persekolahan berjaya dikemaskini!");
+        };
+
+        window.updateReportTitle = function(newTitle) {
+            if (!newTitle || !newTitle.trim()) return;
+            reportTitle = newTitle.trim();
+            window.saveAllToLocalStorage();
+            window.showToast("Tajuk Laporan berjaya dikemaskini!");
+        };
+
+        window.applySchoolYearToUI = function() {
+            const headerInput = document.getElementById('header-year-input');
+            const modalInput = document.getElementById('modal-year-input');
+            const bannerBadge = document.getElementById('banner-year-badge');
+            const titleInput = document.getElementById('report-title-input');
+
+            if (headerInput) headerInput.value = schoolYear;
+            if (modalInput) modalInput.value = schoolYear;
+            if (bannerBadge) bannerBadge.textContent = `Sesi ${schoolYear}`;
+            if (titleInput) titleInput.value = reportTitle;
+        };
+
+        window.resetDataToDefault = function() {
+            subjectData = JSON.parse(JSON.stringify(defaultSubjectData));
+            schoolYear = '2026 / 2027';
+            reportTitle = 'ANALISIS PBD PERTENGAHAN TAHUN 2026 - KESELURUHAN MATA PELAJARAN';
+            
+            try {
+                localStorage.removeItem('pbd_dashboard_data');
+                localStorage.removeItem('pbd_dashboard_school_year');
+                localStorage.removeItem('pbd_dashboard_report_title');
+            } catch(e) {
+                console.error("Error clearing localStorage:", e);
+            }
+
+            window.applySchoolYearToUI();
+            window.renderTabs();
+            window.selectSubject('all');
+            window.showToast("Data telah diset semula ke Data PDF 2026 asal!");
+        };
+
+        window.saveDataFromModal = function(e) {
+            if (e) e.preventDefault();
+            const select = document.getElementById('modal-subject-select');
+            if (!select) return;
+
+            const selectedId = select.value;
+            const subj = subjectData.find(s => s.id === selectedId);
+            if (!subj) return;
+
+            subj.tp['TP 1'] = parseInt(document.getElementById('tp-1').value) || 0;
+            subj.tp['TP 2'] = parseInt(document.getElementById('tp-2').value) || 0;
+            subj.tp['TP 3'] = parseInt(document.getElementById('tp-3').value) || 0;
+            subj.tp['TP 4'] = parseInt(document.getElementById('tp-4').value) || 0;
+            subj.tp['TP 5'] = parseInt(document.getElementById('tp-5').value) || 0;
+            subj.tp['TP 6'] = parseInt(document.getElementById('tp-6').value) || 0;
+
+            const strInput = document.getElementById('modal-strengths').value;
+            const weakInput = document.getElementById('modal-weaknesses').value;
+            const actInput = document.getElementById('modal-actions').value;
+
+            if (strInput) subj.strengths = strInput.split(',').map(s => s.trim()).filter(Boolean);
+            if (weakInput) subj.weaknesses = weakInput.split(',').map(s => s.trim()).filter(Boolean);
+            if (actInput) subj.actions = actInput.split(',').map(s => s.trim()).filter(Boolean);
+
+            window.recalculateAggregates();
+            window.saveAllToLocalStorage();
+
+            window.toggleDataModal();
+            window.renderDashboard();
+            window.showToast(`Data subjek ${subj.name} berjaya dikemaskini & disimpan!`);
+        };
+
+        window.loadModalSubjectData = function() {
+            const select = document.getElementById('modal-subject-select');
+            if (!select) return;
+            const selectedId = select.value;
+            const subj = subjectData.find(s => s.id === selectedId);
+            if (!subj) return;
+
+            document.getElementById('tp-1').value = subj.tp['TP 1'] || 0;
+            document.getElementById('tp-2').value = subj.tp['TP 2'] || 0;
+            document.getElementById('tp-3').value = subj.tp['TP 3'] || 0;
+            document.getElementById('tp-4').value = subj.tp['TP 4'] || 0;
+            document.getElementById('tp-5').value = subj.tp['TP 5'] || 0;
+            document.getElementById('tp-6').value = subj.tp['TP 6'] || 0;
+
+            document.getElementById('modal-strengths').value = (subj.strengths || []).join(', ');
+            document.getElementById('modal-weaknesses').value = (subj.weaknesses || []).join(', ');
+            document.getElementById('modal-actions').value = (subj.actions || []).join(', ');
+
+            window.updateModalCalc();
+        };
+
+        window.updateModalCalc = function() {
+            const tp1 = parseInt(document.getElementById('tp-1').value) || 0;
+            const tp2 = parseInt(document.getElementById('tp-2').value) || 0;
+            const tp3 = parseInt(document.getElementById('tp-3').value) || 0;
+            const tp4 = parseInt(document.getElementById('tp-4').value) || 0;
+            const tp5 = parseInt(document.getElementById('tp-5').value) || 0;
+            const tp6 = parseInt(document.getElementById('tp-6').value) || 0;
+
+            const total = tp1 + tp2 + tp3 + tp4 + tp5 + tp6;
+            const pass = tp3 + tp4 + tp5 + tp6;
+            const fail = tp1 + tp2;
+
+            const passPct = total > 0 ? ((pass / total) * 100).toFixed(1) : '0.0';
+            const failPct = total > 0 ? ((fail / total) * 100).toFixed(1) : '0.0';
+
+            document.getElementById('modal-calc-total').textContent = total;
+            document.getElementById('modal-calc-pass').textContent = `${passPct}% (${pass} Murid)`;
+            document.getElementById('modal-calc-fail').textContent = `${failPct}% (${fail} Murid)`;
+        };
+
+        window.renderTabs = function() {
+            const container = document.getElementById('subject-tabs-container');
+            if (!container) return;
+
+            container.innerHTML = subjectData.map(subj => {
+                const isActive = subj.id === currentSubjectId;
+                const activeClasses = isActive 
+                    ? 'bg-indigo-900 text-white font-bold shadow-md ring-2 ring-indigo-500' 
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200 font-medium';
+
+                return `
+                    <button onclick="window.selectSubject('${subj.id}')" class="px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 whitespace-nowrap transition-all duration-200 shrink-0 ${activeClasses}">
+                        <i class="${subj.icon}"></i>
+                        <span>${subj.name}</span>
+                    </button>
+                `;
+            }).join('');
+        };
+
+        window.initModalSubjectDropdown = function() {
+            const select = document.getElementById('modal-subject-select');
+            if (!select) return;
+
+            select.innerHTML = subjectData.map(s => `
+                <option value="${s.id}">${s.code} - ${s.name}</option>
+            `).join('');
+        };
+
+        window.selectSubject = function(id) {
+            currentSubjectId = id;
+            window.renderTabs();
+            window.renderDashboard();
+        };
+
+        window.updateMainChartType = function() {
+            const selector = document.getElementById('chart-type-selector');
+            if (selector) {
+                currentChartType = selector.value;
+                window.renderMainChart();
+            }
+        };
+
+        window.renderDashboard = function() {
+            const subj = subjectData.find(s => s.id === currentSubjectId) || subjectData[0];
+            const stats = window.calculateStats(subj.tp);
+
+            document.getElementById('selected-subject-badge').textContent = subj.name;
+            document.getElementById('kpi-total-students').textContent = stats.total;
+            document.getElementById('kpi-pass-rate').textContent = `${stats.menguasaiPct}%`;
+            document.getElementById('kpi-fail-rate').textContent = `${stats.tidakMenguasaiPct}%`;
+
+            document.getElementById('card-pass-pct').textContent = `${stats.menguasaiPct}%`;
+            document.getElementById('card-pass-count').textContent = `${stats.menguasai} / ${stats.total} Murid`;
+            document.getElementById('card-pass-bar').style.width = `${stats.menguasaiPct}%`;
+
+            document.getElementById('card-fail-pct').textContent = `${stats.tidakMenguasaiPct}%`;
+            document.getElementById('card-fail-count').textContent = `${stats.tidakMenguasai} / ${stats.total} Murid`;
+            document.getElementById('card-fail-bar').style.width = `${stats.tidakMenguasaiPct}%`;
+
+            document.getElementById('card-cemerlang').textContent = stats.cemerlang;
+            document.getElementById('card-cemerlang-pct').textContent = `${stats.cemerlangPct}%`;
+            document.getElementById('card-cemerlang-bar').style.width = `${stats.cemerlangPct}%`;
+
+            document.getElementById('card-asas').textContent = stats.asas;
+            document.getElementById('card-asas-pct').textContent = `${stats.asasPct}%`;
+            document.getElementById('card-asas-bar').style.width = `${stats.asasPct}%`;
+
+            const strUl = document.getElementById('analysis-strengths');
+            const weakUl = document.getElementById('analysis-weaknesses');
+            const actUl = document.getElementById('analysis-actions');
+
+            if (strUl) strUl.innerHTML = (subj.strengths || []).map(s => `<li>${s}</li>`).join('');
+            if (weakUl) weakUl.innerHTML = (subj.weaknesses || []).map(w => `<li>${w}</li>`).join('');
+            if (actUl) actUl.innerHTML = (subj.actions || []).map(a => `<li>${a}</li>`).join('');
+
+            window.renderMainChart();
+            window.renderSecondaryChart();
+            window.renderGradeTable(subj, stats);
+        };
+
+        window.renderMainChart = function() {
+            const subj = subjectData.find(s => s.id === currentSubjectId) || subjectData[0];
+            const ctx = document.getElementById('mainChart');
+            if (!ctx) return;
+
+            if (mainChart) mainChart.destroy();
+
+            const labels = ['TP 1', 'TP 2', 'TP 3', 'TP 4', 'TP 5', 'TP 6'];
+            const data = labels.map(l => subj.tp[l] || 0);
+            const backgroundColors = ['#f43f5e', '#fb923c', '#eab308', '#3b82f6', '#6366f1', '#10b981'];
+
+            mainChart = new Chart(ctx, {
+                type: currentChartType,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `Bilangan Murid (${subj.name})`,
+                        data: data,
+                        backgroundColor: currentChartType === 'line' ? 'rgba(99, 102, 241, 0.2)' : backgroundColors,
+                        borderColor: '#4f46e5',
+                        borderWidth: 2,
+                        fill: currentChartType === 'line',
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: currentChartType === 'doughnut', position: 'bottom' }
+                    }
+                }
+            });
+        };
+
+        window.renderSecondaryChart = function() {
+            const ctx = document.getElementById('secondaryChart');
+            if (!ctx) return;
+
+            if (secondaryChart) secondaryChart.destroy();
+
+            const subjectsExceptAll = subjectData.filter(s => s.id !== 'all');
+            const labels = subjectsExceptAll.map(s => s.code);
+            const passRates = subjectsExceptAll.map(s => {
+                const st = window.calculateStats(s.tp);
+                return parseFloat(st.menguasaiPct);
+            });
+
+            secondaryChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '% Menguasai (TP3 - TP6)',
+                        data: passRates,
+                        backgroundColor: passRates.map(p => p >= 95 ? '#10b981' : p >= 90 ? '#3b82f6' : '#fb923c'),
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { min: 0, max: 100 }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        };
+
+        // Render Summary Table (Matrix PDF View vs Single View)
+        window.renderGradeTable = function(currentSubj, stats) {
+            const thead = document.getElementById('grade-table-head');
+            const tbody = document.getElementById('grade-table-body');
+            if (!thead || !tbody) return;
+
+            if (currentSubj.id === 'all') {
+                // PDF Matrix View for All Subjects
+                thead.innerHTML = `
+                    <tr class="bg-indigo-900 text-white text-[11px]">
+                        <th class="py-3 px-3">Mata Pelajaran</th>
+                        <th class="py-3 px-2 text-center">Bil Murid</th>
+                        <th class="py-3 px-1.5 text-center bg-rose-800">TP1</th>
+                        <th class="py-3 px-1.5 text-center bg-orange-700">TP2</th>
+                        <th class="py-3 px-1.5 text-center bg-yellow-700">TP3</th>
+                        <th class="py-3 px-1.5 text-center bg-blue-800">TP4</th>
+                        <th class="py-3 px-1.5 text-center bg-indigo-800">TP5</th>
+                        <th class="py-3 px-1.5 text-center bg-emerald-800">TP6</th>
+                        <th class="py-3 px-2 text-center bg-rose-900">TM (TP1-2)</th>
+                        <th class="py-3 px-2 text-center bg-rose-900">% TM</th>
+                        <th class="py-3 px-2 text-center bg-emerald-900">M (TP3-6)</th>
+                        <th class="py-3 px-2 text-center bg-emerald-900">% M</th>
+                        <th class="py-3 px-2 text-center no-print">Tindakan</th>
+                    </tr>
+                `;
+
+                const rows = subjectData.filter(s => s.id !== 'all').map(subj => {
+                    const st = window.calculateStats(subj.tp);
+                    return `
+                        <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                            <td class="py-2.5 px-3 font-bold text-slate-800">${subj.code} - ${subj.name}</td>
+                            <td class="py-2.5 px-2 text-center font-semibold">${st.total}</td>
+                            <td class="py-2.5 px-1.5 text-center font-bold text-rose-600">${subj.tp['TP 1'] || 0}</td>
+                            <td class="py-2.5 px-1.5 text-center font-bold text-orange-600">${subj.tp['TP 2'] || 0}</td>
+                            <td class="py-2.5 px-1.5 text-center font-bold text-yellow-600">${subj.tp['TP 3'] || 0}</td>
+                            <td class="py-2.5 px-1.5 text-center font-bold text-blue-600">${subj.tp['TP 4'] || 0}</td>
+                            <td class="py-2.5 px-1.5 text-center font-bold text-indigo-600">${subj.tp['TP 5'] || 0}</td>
+                            <td class="py-2.5 px-1.5 text-center font-bold text-emerald-600">${subj.tp['TP 6'] || 0}</td>
+                            <td class="py-2.5 px-2 text-center font-bold text-rose-700 bg-rose-50/50">${st.tidakMenguasai}</td>
+                            <td class="py-2.5 px-2 text-center font-bold text-rose-700 bg-rose-50/50">${st.tidakMenguasaiPct}%</td>
+                            <td class="py-2.5 px-2 text-center font-bold text-emerald-700 bg-emerald-50/50">${st.menguasai}</td>
+                            <td class="py-2.5 px-2 text-center font-bold text-emerald-700 bg-emerald-50/50">${st.menguasaiPct}%</td>
+                            <td class="py-2.5 px-2 text-center no-print">
+                                <button onclick="window.openModalForSubject('${subj.id}')" class="px-2 py-1 bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-600 hover:text-white rounded text-[10px] font-semibold transition">
+                                    Edit
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                tbody.innerHTML = rows;
+            } else {
+                // Single Subject Detailed View
+                thead.innerHTML = `
+                    <tr class="bg-indigo-900 text-white text-[11px]">
+                        <th class="py-3 px-3">Tahap Penguasaan</th>
+                        <th class="py-3 px-3">Kategori Standard</th>
+                        <th class="py-3 px-3 text-center">Bilangan Murid</th>
+                        <th class="py-3 px-3 text-center">Peratusan (%)</th>
+                    </tr>
+                `;
+
+                const labels = ['TP 1', 'TP 2', 'TP 3', 'TP 4', 'TP 5', 'TP 6'];
+                const descs = [
+                    'Sangat Terhad (Perlu Bimbingan)',
+                    'Terhad (Perlu Bimbingan)',
+                    'Memuaskan (Tahap Minimum)',
+                    'Baik',
+                    'Sangat Baik',
+                    'Cemerlang / Terpuji'
+                ];
+
+                tbody.innerHTML = labels.map((tp, idx) => {
+                    const count = currentSubj.tp[tp] || 0;
+                    const pct = stats.total > 0 ? ((count / stats.total) * 100).toFixed(2) : '0.00';
+                    const isFail = idx < 2;
+                    return `
+                        <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                            <td class="py-2.5 px-3 font-bold ${isFail ? 'text-rose-600' : 'text-slate-800'}">${tp}</td>
+                            <td class="py-2.5 px-3 text-slate-600">${descs[idx]}</td>
+                            <td class="py-2.5 px-3 text-center font-bold text-slate-900">${count}</td>
+                            <td class="py-2.5 px-3 text-center font-bold ${isFail ? 'text-rose-600' : 'text-emerald-600'}">${pct}%</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        };
+
+        // Presentation Mode Logic
+        window.startPresentationMode = function() {
+            const overlay = document.getElementById('presentation-overlay');
+            if (overlay) {
+                overlay.classList.remove('hidden');
+                overlay.classList.add('flex');
+                currentSlide = 0;
+                window.renderSlide();
+            }
+        };
+
+        window.exitPresentationMode = function() {
+            const overlay = document.getElementById('presentation-overlay');
+            if (overlay) {
+                overlay.classList.add('hidden');
+                overlay.classList.remove('flex');
+            }
+        };
+
+        window.nextSlide = function() {
+            if (currentSlide < 2) {
+                currentSlide++;
+                window.renderSlide();
+            }
+        };
+
+        window.prevSlide = function() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                window.renderSlide();
+            }
+        };
+
+        window.goToSlide = function(idx) {
+            currentSlide = idx;
+            window.renderSlide();
+        };
+
+        window.renderSlide = function() {
+            const subj = subjectData.find(s => s.id === currentSubjectId) || subjectData[0];
+            const stats = window.calculateStats(subj.tp);
+            const slideContainer = document.getElementById('pres-slide-content');
+            const indicator = document.getElementById('pres-slide-indicator');
+            const titleEl = document.getElementById('pres-subject-title');
+
+            if (titleEl) titleEl.textContent = `${subj.name} (${schoolYear})`;
+            if (indicator) indicator.textContent = `Slaid ${currentSlide + 1} / 3`;
+
+            const dots = document.getElementById('pres-dots');
+            if (dots) {
+                Array.from(dots.children).forEach((dot, idx) => {
+                    dot.className = idx === currentSlide 
+                        ? 'w-3 h-3 rounded-full bg-indigo-500 cursor-pointer' 
+                        : 'w-3 h-3 rounded-full bg-slate-700 cursor-pointer';
+                });
+            }
+
+            if (!slideContainer) return;
+
+            if (currentSlide === 0) {
+                slideContainer.innerHTML = `
+                    <div class="text-center space-y-6 max-w-3xl">
+                        <img src="https://raw.githubusercontent.com/skteminofficial/iddelima/main/logo.png" 
+                             onerror="this.onerror=null; this.src='https://placehold.co/120x120/4f46e5/ffffff?text=SK+TEMIN';" 
+                             alt="Logo" class="w-24 h-24 mx-auto bg-white p-2 rounded-2xl shadow-2xl border border-indigo-400/30">
+                        <span class="px-4 py-1.5 bg-amber-400 text-slate-900 font-extrabold rounded-full text-sm uppercase tracking-wider">
+                            SEKOLAH KEBANGSAAN TEMIN
+                        </span>
+                        <h2 class="text-3xl sm:text-5xl font-black text-white leading-tight">${reportTitle}</h2>
+                        <p class="text-lg text-indigo-200">Subjek: <span class="font-bold text-amber-300">${subj.name}</span> | Sesi: <span class="font-bold text-emerald-300">${schoolYear}</span></p>
+
+                        <div class="grid grid-cols-3 gap-6 pt-6">
+                            <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
+                                <p class="text-xs text-slate-400 font-semibold uppercase">Jumlah Calon</p>
+                                <p class="text-4xl font-extrabold text-white mt-2">${stats.total}</p>
+                            </div>
+                            <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
+                                <p class="text-xs text-emerald-400 font-semibold uppercase">% Menguasai (M)</p>
+                                <p class="text-4xl font-extrabold text-emerald-400 mt-2">${stats.menguasaiPct}%</p>
+                                <p class="text-xs text-emerald-200 mt-1">${stats.menguasai} Murid (TP3-6)</p>
+                            </div>
+                            <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
+                                <p class="text-xs text-rose-400 font-semibold uppercase">% Tidak Menguasai (TM)</p>
+                                <p class="text-4xl font-extrabold text-rose-400 mt-2">${stats.tidakMenguasaiPct}%</p>
+                                <p class="text-xs text-rose-200 mt-1">${stats.tidakMenguasai} Murid (TP1-2)</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (currentSlide === 1) {
+                slideContainer.innerHTML = `
+                    <div class="w-full max-w-4xl space-y-4">
+                        <h3 class="text-2xl font-bold text-indigo-300 text-center mb-4">Taburan Tahap Penguasaan (TP 1 - TP 6)</h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-6 gap-3 text-center">
+                            <div class="bg-rose-950/40 border border-rose-800/50 p-4 rounded-xl">
+                                <p class="text-xs font-bold text-rose-400">TP 1</p>
+                                <p class="text-3xl font-black text-white mt-1">${subj.tp['TP 1'] || 0}</p>
+                            </div>
+                            <div class="bg-orange-950/40 border border-orange-800/50 p-4 rounded-xl">
+                                <p class="text-xs font-bold text-orange-400">TP 2</p>
+                                <p class="text-3xl font-black text-white mt-1">${subj.tp['TP 2'] || 0}</p>
+                            </div>
+                            <div class="bg-yellow-950/40 border border-yellow-800/50 p-4 rounded-xl">
+                                <p class="text-xs font-bold text-yellow-400">TP 3</p>
+                                <p class="text-3xl font-black text-white mt-1">${subj.tp['TP 3'] || 0}</p>
+                            </div>
+                            <div class="bg-blue-950/40 border border-blue-800/50 p-4 rounded-xl">
+                                <p class="text-xs font-bold text-blue-400">TP 4</p>
+                                <p class="text-3xl font-black text-white mt-1">${subj.tp['TP 4'] || 0}</p>
+                            </div>
+                            <div class="bg-indigo-950/40 border border-indigo-800/50 p-4 rounded-xl">
+                                <p class="text-xs font-bold text-indigo-400">TP 5</p>
+                                <p class="text-3xl font-black text-white mt-1">${subj.tp['TP 5'] || 0}</p>
+                            </div>
+                            <div class="bg-emerald-950/40 border border-emerald-800/50 p-4 rounded-xl">
+                                <p class="text-xs font-bold text-emerald-400">TP 6</p>
+                                <p class="text-3xl font-black text-white mt-1">${subj.tp['TP 6'] || 0}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (currentSlide === 2) {
+                slideContainer.innerHTML = `
+                    <div class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-emerald-950/30 border border-emerald-800/50 p-5 rounded-2xl">
+                            <h4 class="text-emerald-400 font-bold text-lg mb-2 flex items-center gap-2">
+                                <i class="fa-solid fa-thumbs-up"></i> Kekuatan & Murid TP 5-6
+                            </h4>
+                            <ul class="list-disc list-inside text-slate-200 text-sm space-y-2">
+                                ${(subj.strengths || []).map(s => `<li>${s}</li>`).join('')}
+                            </ul>
+                        </div>
+                        <div class="bg-indigo-950/30 border border-indigo-800/50 p-5 rounded-2xl">
+                            <h4 class="text-indigo-300 font-bold text-lg mb-2 flex items-center gap-2">
+                                <i class="fa-solid fa-lightbulb"></i> Pelan Bimbingan & Intervensi
+                            </h4>
+                            <ul class="list-disc list-inside text-slate-200 text-sm space-y-2">
+                                ${(subj.actions || []).map(a => `<li>${a}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }
+        };
+
+        window.loadSavedData = function() {
+            try {
+                const savedData = localStorage.getItem('pbd_dashboard_data');
+                if (savedData) {
+                    subjectData = JSON.parse(savedData);
+                } else {
+                    subjectData = JSON.parse(JSON.stringify(defaultSubjectData));
+                }
+
+                const savedYear = localStorage.getItem('pbd_dashboard_school_year');
+                if (savedYear) schoolYear = savedYear;
+
+                const savedTitle = localStorage.getItem('pbd_dashboard_report_title');
+                if (savedTitle) reportTitle = savedTitle;
+            } catch(e) {
+                console.error("Error loading saved data:", e);
+                subjectData = JSON.parse(JSON.stringify(defaultSubjectData));
+            }
+
+            window.recalculateAggregates();
+        };
+
+        window.onload = function() {
+            window.loadSavedData();
+            window.applySchoolYearToUI();
+            window.initModalSubjectDropdown();
+            window.renderTabs();
+            window.renderDashboard();
+
+            ['tp-1', 'tp-2', 'tp-3', 'tp-4', 'tp-5', 'tp-6'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('input', window.updateModalCalc);
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    window.exitPresentationMode();
+                }
+            });
+        };
+    </script>
+</body>
+</html>
