@@ -1,0 +1,18 @@
+const fs = require('fs');
+const assert = require('assert');
+const dashboard = fs.readFileSync('js/dashboard.js', 'utf8');
+const charts = fs.readFileSync('js/charts.js', 'utf8');
+const html = fs.readFileSync('index.html', 'utf8');
+assert(dashboard.includes('showTPDetails'));
+assert(dashboard.includes('showStudentDetails'));
+assert(dashboard.includes('groupRecordsByStudent'));
+assert(dashboard.includes('subjectSummaries'));
+assert(dashboard.includes('renderSubjectOverview'));
+assert(dashboard.includes('tp-student-search'));
+assert(dashboard.includes("Menguasai (TP3–TP6)"));
+assert(dashboard.includes("Belum Menguasai (TP1–TP2)"));
+assert(charts.includes('renderTPChart'));
+assert(html.includes('id="tp-chart"'));
+assert(html.includes('id="detail-modal"'));
+assert(html.includes('id="subject-overview-grid"'));
+console.log('Interactive Dashboard UX Patch tests passed.');
