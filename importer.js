@@ -1,0 +1,5 @@
+(function(){
+  async function fromZip(file){if(!window.JSZip)throw new Error('Pustaka ZIP gagal dimuatkan. Pastikan internet tersedia ketika membuka dashboard.');const zip=await JSZip.loadAsync(file);const entries=Object.values(zip.files).filter(e=>!e.dir&&/\.(xls|xlsx|html?)$/i.test(e.name));if(!entries.length)throw new Error('Tiada fail XLS/HTML ditemui dalam ZIP.');const results=[];const errors=[];for(const entry of entries){try{const text=await entry.async('string');results.push(PBDParser.parseHtml(text,entry.name));}catch(err){errors.push({file:entry.name,error:err.message});}}return{results,errors,totalFiles:entries.length};}
+  async function fromFiles(files){const results=[],errors=[];for(const file of files){try{results.push(await PBDParser.parseFile(file));}catch(err){errors.push({file:file.name,error:err.message});}}return{results,errors,totalFiles:files.length};}
+  window.PBDImporter={fromZip,fromFiles};
+})();
