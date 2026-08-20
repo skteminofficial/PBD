@@ -1,5 +1,6 @@
 (function () {
   const API_URL = 'https://script.google.com/macros/s/AKfycbzhqOIoNgLjJy1K4k4NeOoqBspvBZZK6qA28Jwy6EvI7usHvJq_weWol9mQw3BkNXgbgQ/exec?action=dataset';
+  window.SAP_TEMIN_API_BASE = API_URL.replace(/\?action=dataset$/, '');
   const $ = selector => document.querySelector(selector);
 
   function toast(message, error = false) {
@@ -58,6 +59,8 @@
       const summary = window.PBDAnalysis.summarize(imported.results, imported.totalFiles, imported.errors);
       if (!summary.items.length) throw new Error('Data pusat tidak dapat dibentuk menjadi analisis.');
       window.PBDDashboard.render(summary);
+      $('#presentation-session').textContent = `SESI ${data.session || '—'}`;
+      $('#presentation-subtitle').textContent = `${data.activity || 'Pentaksiran Bilik Darjah'} · data iDMe dikemas kini secara berpusat.`;
       const updated = data.updatedAt ? new Date(data.updatedAt).toLocaleString('ms-MY', {timeZone:'Asia/Kuala_Lumpur'}) : 'Tidak diketahui';
       $('#updated-at').textContent = `Dikemas kini ${updated}`;
       toast(`${summary.students} murid · ${summary.items.length} kelas · data pusat berjaya dimuatkan`);
