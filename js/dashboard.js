@@ -4,6 +4,10 @@
   let filteredRecords = [];
   let currentTPStudents = [];
   let selectedAnalysisYear = null;
+  let subjectComparisonChart = null;
+  let activeStudent = null;
+  let activeStudentAnalysis = null;
+  let activeInterventions = [];
   const filters = { subject: '', year: '', classes: new Set(), student: '' };
   const $ = selector => document.querySelector(selector);
   const esc = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
@@ -74,6 +78,28 @@
       </button>`;
     }).join('') || '<div class="empty-state">Tiada data subjek untuk penapis semasa.</div>';
   }
+  function renderExecutiveSummary(records) {
+    const summaries = subjectSummaries(records);
+    const studentKeys = new Set(records.map(r=>`${String(r.studentName||'').trim().toUpperCase()}|${r.year||''}|${String(r.className||'').trim().toUpperCase()}`));
+    const mastered = records.filter(isMastered).length;
+    const notMastered = records.length - mastered;
+    const masteredRate = records.length ? mastered / records.length * 100 : 0;
+    const notMasteredRate = records.length ? notMastered / records.length * 100 : 0;
+    $('#executive-students').textContent = studentKeys.size.toLocaleString('ms-MY');
+    $('#executive-records').textContent = records.length.toLocaleString('ms-MY');
+    $('#executive-mastered').textContent = `${masteredRate.toFixed(1)}%`;
+    $('#executive-not-mastered').textContent = `${notMasteredRate.toFixed(1)}%`;
+    $('#executive-mastered-count').textContent = `${mastered.toLocaleString('ms-MY')} rekod · TP3–TP6`;
+    $('#executive-not-mastered-count').textContent = `${notMastered.toLocaleString('ms-MY')} rekod · TP1–TP2`;
+    $('#subject-summary-body').innerHTML = summaries.map(item => `<tr data-summary-subject="${esc(item.subject)}"><td><button type="button" class="subject-table-link" data-subject-overview="${esc(item.subject)}">${esc(item.subject)}</button></td><td>${item.students}</td><td>${item.distribution.TP1}</td><td>${item.distribution.TP2}</td><td>${item.distribution.TP3}</td><td>${item.distribution.TP4}</td><td>${item.distribution.TP5}</td><td>${item.distribution.TP6}</td><td class="tm-cell">${item.notMastered}</td><td class="tm-cell"><strong>${(100-item.masteryRate).toFixed(1)}%</strong></td><td class="m-cell">${item.mastered}</td><td class="m-cell"><strong>${item.masteryRate.toFixed(1)}%</strong></td></tr>`).join('') || '<tr><td colspan="12">Tiada data.</td></tr>';
+    renderSubjectComparisonChart(summaries);
+  }
+  function renderSubjectComparisonChart(summaries) {
+    const canvas = $('#subject-comparison-chart');
+    if (!canvas || !window.Chart) return;
+    subjectComparisonChart?.destroy();
+    subjectComparisonChart = new Chart(canvas, {type:'bar',data:{labels:summaries.map(x=>x.subject),datasets:[{label:'% Menguasai (TP3–TP6)',data:summaries.map(x=>Number(x.masteryRate.toFixed(1))),backgroundColor:'#10b981',borderRadius:5},{label:'% Belum Menguasai (TP1–TP2)',data:summaries.map(x=>Number((100-x.masteryRate).toFixed(1))),backgroundColor:'#f43f5e',borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',scales:{x:{beginAtZero:true,max:100,title:{display:true,text:'Peratus (%)'}},y:{ticks:{autoSkip:false}}},plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.raw}%`}}}}});
+  }
   function studentsByYear(records){ const map={}; const sets={}; records.forEach(r=>{const y=r.year||'Lain'; sets[y]??=new Set(); sets[y].add(`${r.studentName}|${r.className}`)}); Object.keys(sets).forEach(y=>map[y]=sets[y].size); return map; }
   function populateFilters(records){
     $('#filter-subject').innerHTML='<option value="">Semua subjek</option>'+unique(records.map(r=>r.subject)).map(v=>`<option>${esc(v)}</option>`).join('');
@@ -91,6 +117,7 @@
     window.PBDCharts.renderYearChart(studentsByYear(filteredRecords));
     window.PBDCharts.renderTPChart(distribution(filteredRecords),tp=>{window.PBDDashboard.activeTP=tp;showTPDetails(tp)});
     renderSubjectOverview(filteredRecords);
+    renderExecutiveSummary(filteredRecords);
     renderAnalyses(filteredRecords);
     updateFocusMode();
     renderStudentSuggestions($('#student-search')?.value || '');
@@ -156,12 +183,41 @@
   function closeStudentDrawer(){ const drawer=$('#student-drawer'); if(!drawer)return; drawer.classList.add('hidden'); drawer.setAttribute('aria-hidden','true'); document.body.classList.remove('drawer-open'); }
   function showStudentDetails(name,year,className){
     const analysis=window.PBDStudentAnalysis.getStudentAnalysis(currentSummary.items,name,{year,className});
+    activeStudent={name,year:Number(year),className}; activeStudentAnalysis=analysis; activeInterventions=[];
     const m=analysis.subjects.filter(x=>tpNo(x.tp)>=3),tm=analysis.subjects.filter(x=>tpNo(x.tp)<=2);
     $('#drawer-student-name').textContent=analysis.summary.studentName;
     $('#drawer-student-meta').textContent=`Tahun ${analysis.summary.year||'—'} · ${shortClassLabel(analysis.summary.year,analysis.summary.className)||'—'} · ${analysis.summary.totalSubjects} subjek`;
     $('#student-drawer-body').innerHTML=`<div class="drawer-kpi-grid"><article><small>Menguasai</small><strong>${m.length}</strong><span>TP3–TP6</span></article><article class="attention"><small>Belum Menguasai</small><strong>${tm.length}</strong><span>TP1–TP2</span></article></div><div class="mastery-columns drawer-mastery-columns">${renderSubjectSection('Menguasai (TP3–TP6)',m,'mastered')}${renderSubjectSection('Belum Menguasai (TP1–TP2)',tm,'not-mastered')}</div>`;
+    setDrawerTab('achievement');
     closeModal();
     openStudentDrawer();
+  }
+  function setDrawerTab(tab){ document.querySelectorAll('[data-drawer-tab]').forEach(b=>b.classList.toggle('active',b.dataset.drawerTab===tab)); }
+  function sessionValue(){ return String(currentSummary?.school?.metadata?.sessions?.[0] || '').trim(); }
+  function achievementMarkup(){
+    const a=activeStudentAnalysis;if(!a)return '<div class="empty-state">Tiada murid dipilih.</div>';
+    const m=a.subjects.filter(x=>tpNo(x.tp)>=3),tm=a.subjects.filter(x=>tpNo(x.tp)<=2);
+    return `<div class="drawer-kpi-grid"><article><small>Menguasai</small><strong>${m.length}</strong><span>TP3–TP6</span></article><article class="attention"><small>Belum Menguasai</small><strong>${tm.length}</strong><span>TP1–TP2</span></article></div><div class="mastery-columns drawer-mastery-columns">${renderSubjectSection('Menguasai (TP3–TP6)',m,'mastered')}${renderSubjectSection('Belum Menguasai (TP1–TP2)',tm,'not-mastered')}</div>`;
+  }
+  async function loadInterventions(){
+    if(!activeStudent)return [];
+    const q=new URLSearchParams({action:'interventions',session:sessionValue(),year:String(activeStudent.year),className:activeStudent.className,studentName:activeStudent.name,t:String(Date.now())});
+    const response=await fetch(`${window.SAP_TEMIN_API_BASE}?${q}`,{cache:'no-store'});const data=await response.json();if(!data.ok)throw new Error(data.error||'Intervensi gagal dimuatkan.');activeInterventions=data.records||[];return activeInterventions;
+  }
+  function interventionListMarkup(records){return records.length?`<div class="intervention-history">${records.map(x=>`<article><header><strong>${esc(x.subject)}</strong><span class="intervention-status">${esc(x.status)}</span></header><small>${esc(x.recordDate)} · ${esc(x.teacherName||x.teacherEmail)}</small><p><b>Isu:</b> ${esc(x.issue)}</p><p><b>Tindakan:</b> ${esc(x.interventionAction)}</p>${x.progress?`<p><b>Perkembangan:</b> ${esc(x.progress)}</p>`:''}${x.reviewDate?`<p><b>Semakan:</b> ${esc(x.reviewDate)}</p>`:''}</article>`).join('')}</div>`:'<div class="empty-state">Belum ada rekod intervensi untuk murid ini.</div>'}
+  async function showInterventionTab(){
+    setDrawerTab('intervention');const body=$('#student-drawer-body');body.innerHTML='<div class="drawer-loading">Memuatkan rekod intervensi…</div>';
+    try{await loadInterventions();const subjects=activeStudentAnalysis.subjects.map(x=>x.subject);body.innerHTML=`<form id="intervention-form" class="intervention-form"><h3>Catat Intervensi Baharu</h3><div class="form-grid"><label>Tarikh<input name="recordDate" type="date" required value="${new Date().toISOString().slice(0,10)}"></label><label>Mata Pelajaran<select name="subject" required><option value="">Pilih subjek</option>${subjects.map(x=>`<option>${esc(x)}</option>`).join('')}</select></label><label class="full">Isu/Kemahiran Belum Dikuasai<textarea name="issue" required placeholder="Contoh: Belum menguasai operasi bahagi..."></textarea></label><label class="full">Tindakan Intervensi<textarea name="interventionAction" required placeholder="Contoh: Bimbingan kumpulan kecil dan modul pengukuhan..."></textarea></label><label class="full">Catatan Perkembangan<textarea name="progress" placeholder="Boleh dikemas kini dalam catatan berikutnya"></textarea></label><label>Status<select name="status"><option>BELUM MULA</option><option>SEDANG DILAKSANAKAN</option><option>SELESAI</option></select></label><label>Tarikh Semakan<input name="reviewDate" type="date"></label><label>E-mel DELIMa Guru<input name="teacherEmail" type="email" required value="${esc(localStorage.getItem('sapTeacherEmail')||'')}" placeholder="nama@moe-dl.edu.my"></label><label>PIN Guru<input name="teacherPin" type="password" inputmode="numeric" required placeholder="PIN dalam AKSES_GURU"></label></div><button class="btn btn-primary" type="submit">Simpan Intervensi</button><p id="intervention-form-status" class="form-status"></p></form><section class="intervention-list-section"><h3>Sejarah Intervensi</h3>${interventionListMarkup(activeInterventions)}</section>`;}catch(e){body.innerHTML=`<div class="empty-state">${esc(e.message)}</div>`;}
+  }
+  async function saveIntervention(form){
+    const fd=new FormData(form), status=$('#intervention-form-status');status.textContent='Menyimpan…';
+    const payload={action:'save_intervention',session:sessionValue(),year:activeStudent.year,className:activeStudent.className,studentName:activeStudent.name,...Object.fromEntries(fd.entries())};
+    localStorage.setItem('sapTeacherEmail',payload.teacherEmail);
+    try{const response=await fetch(window.SAP_TEMIN_API_BASE,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});const data=await response.json();if(!data.ok)throw new Error(data.error||'Gagal menyimpan.');await showInterventionTab();}catch(e){status.textContent=e.message;status.classList.add('error');}
+  }
+  async function showReportTab(){
+    setDrawerTab('report');const body=$('#student-drawer-body');body.innerHTML='<div class="drawer-loading">Menjana laporan murid…</div>';
+    try{await loadInterventions();const a=activeStudentAnalysis,m=a.subjects.filter(x=>tpNo(x.tp)>=3),tm=a.subjects.filter(x=>tpNo(x.tp)<=2);body.innerHTML=`<section id="student-report" class="student-report"><header><p>SEKOLAH KEBANGSAAN TEMIN</p><h2>Laporan Pencapaian dan Intervensi PBD</h2><small>Sesi ${esc(sessionValue())}</small></header><dl><div><dt>Nama Murid</dt><dd>${esc(a.summary.studentName)}</dd></div><div><dt>Tahun / Kelas</dt><dd>Tahun ${a.summary.year} · ${esc(shortClassLabel(a.summary.year,a.summary.className))}</dd></div><div><dt>Jumlah Subjek</dt><dd>${a.summary.totalSubjects}</dd></div></dl><h3>Pencapaian Mata Pelajaran</h3><table><thead><tr><th>Mata Pelajaran</th><th>TP</th><th>Status</th></tr></thead><tbody>${a.subjects.map(x=>`<tr><td>${esc(x.subject)}</td><td><strong>${esc(x.tp)}</strong></td><td>${tpNo(x.tp)>=3?'Menguasai':'Belum Menguasai'}</td></tr>`).join('')}</tbody></table><div class="report-summary"><p><b>Menguasai:</b> ${m.length} subjek</p><p><b>Belum Menguasai:</b> ${tm.length} subjek</p></div><h3>Rekod Intervensi</h3>${interventionListMarkup(activeInterventions)}<footer>Dijana pada ${new Date().toLocaleString('ms-MY')} daripada SAP-TEMIN PBD.</footer></section><button id="btn-print-student-report" class="btn btn-primary report-print-btn" type="button">🖨️ Cetak / Simpan PDF</button>`;}catch(e){body.innerHTML=`<div class="empty-state">${esc(e.message)}</div>`;}
   }
   function autocompleteStudentPool(){
     return groupRecordsByStudent(filteredRecords);
@@ -195,12 +251,16 @@
     }
     $('#btn-reset-filters').onclick=()=>{filters.subject='';filters.year='';filters.student='';filters.classes.clear();$('#filter-subject').value='';$('#filter-year').value='';if($('#student-search'))$('#student-search').value='';hideStudentSuggestions();$('#filter-classes').querySelectorAll('input').forEach(x=>x.checked=false);applyFilters()};
     $('#btn-show-all-subjects').onclick=()=>{filters.subject='';$('#filter-subject').value='';applyFilters()};
+    $('#btn-presentation').onclick=()=>{document.body.classList.toggle('presentation-mode');$('#btn-presentation').textContent=document.body.classList.contains('presentation-mode')?'✕ Keluar Pembentangan':'🖥️ Mod Pembentangan';$('#presentation-summary').scrollIntoView({behavior:'smooth',block:'start'});};
+    $('#btn-print-summary').onclick=()=>window.print();
   }
   function render(summary){ const view=createViewModel(summary); currentSummary=summary; allRecords=window.PBDAnalysisCore.buildRecords(summary.items); filteredRecords=[...allRecords]; filters.subject=''; filters.year=''; filters.student=''; filters.classes.clear(); $('#welcome-screen').classList.add('hidden'); $('#app-screen').classList.remove('hidden'); $('#session-badge').textContent=view.sessionLabel; populateFilters(allRecords); bindFilters(); applyFilters(); }
   function searchClasses(q){if(currentSummary && $('#class-table-body'))renderTable(currentSummary.items,q)}
-  function reset(){currentSummary=null;allRecords=[];filteredRecords=[];selectedAnalysisYear=null;filters.classes.clear();closeModal();closeStudentDrawer();window.PBDCharts.destroyAll?.();$('#app-screen').classList.add('hidden');$('#welcome-screen').classList.remove('hidden')}
+  function reset(){currentSummary=null;allRecords=[];filteredRecords=[];selectedAnalysisYear=null;filters.classes.clear();closeModal();closeStudentDrawer();window.PBDCharts.destroyAll?.();subjectComparisonChart?.destroy();subjectComparisonChart=null;$('#app-screen').classList.add('hidden');$('#welcome-screen').classList.remove('hidden')}
   $('#modal-close')?.addEventListener('click',closeModal); document.querySelector('[data-close-modal]')?.addEventListener('click',closeModal); $('#student-drawer-close')?.addEventListener('click',closeStudentDrawer); document.querySelector('[data-close-drawer]')?.addEventListener('click',closeStudentDrawer); document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeStudentDrawer();}});
   $('#modal-body')?.addEventListener('input',e=>{if(e.target.matches('#tp-student-search'))renderTPStudentCards(currentTPStudents,window.PBDDashboard.activeTP,e.target.value);if(e.target.matches('#mastery-list-search'))window.PBDDashboard.renderMasteryList?.(e.target.value)});
+  $('#student-drawer')?.addEventListener('click',e=>{const tab=e.target.closest('[data-drawer-tab]');if(tab){if(tab.dataset.drawerTab==='achievement'){$('#student-drawer-body').innerHTML=achievementMarkup();setDrawerTab('achievement')}if(tab.dataset.drawerTab==='intervention')showInterventionTab();if(tab.dataset.drawerTab==='report')showReportTab();}if(e.target.closest('#btn-print-student-report'))window.print();});
+  $('#student-drawer')?.addEventListener('submit',e=>{if(e.target.matches('#intervention-form')){e.preventDefault();saveIntervention(e.target);}});
   document.addEventListener('click',e=>{const subjectCard=e.target.closest('[data-subject-overview]');if(subjectCard){filters.subject=subjectCard.dataset.subjectOverview;$('#filter-subject').value=filters.subject;applyFilters();setTimeout(()=>$('#subject-overview-grid')?.scrollIntoView({behavior:'smooth',block:'start'}),20);return;}if(e.target.closest('#mastered-summary-card')){showMasteryList(true);return;}if(e.target.closest('#not-mastered-summary-card')){showMasteryList(false);return;}const suggestion=e.target.closest('[data-search-student]');if(suggestion){$('#student-search').value=suggestion.dataset.searchStudent;hideStudentSuggestions();showStudentDetails(suggestion.dataset.searchStudent,suggestion.dataset.searchYear,suggestion.dataset.searchClass);return;}if(!e.target.closest('.student-search-label'))hideStudentSuggestions();const yearButton=e.target.closest('[data-analysis-year]');if(yearButton){selectedAnalysisYear=yearButton.dataset.analysisYear;renderAnalyses(filteredRecords);setTimeout(()=>$('#class-analysis-panel')?.scrollIntoView({behavior:'smooth',block:'start'}),20);return;}if(e.target.closest('#btn-close-class-analysis')){selectedAnalysisYear=null;renderAnalyses(filteredRecords);return;}const b=e.target.closest('[data-student]');if(b)showStudentDetails(b.dataset.student,b.dataset.year,b.dataset.class);if(e.target.closest('[data-back-tp]')&&window.PBDDashboard.activeTP)showTPDetails(window.PBDDashboard.activeTP)});
   window.PBDDashboard={activeTP:null,createViewModel,subjectSummaries,groupRecordsByStudent,render,searchClasses,showTPDetails,closeModal,closeStudentDrawer,reset};
 })();
