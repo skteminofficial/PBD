@@ -8,6 +8,7 @@
   let activeStudent = null;
   let activeStudentAnalysis = null;
   let activeInterventions = [];
+  let teacherAssignments = [];
   const filters = { subject: '', year: '', classes: new Set(), student: '' };
   const $ = selector => document.querySelector(selector);
   const esc = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
@@ -105,6 +106,45 @@
     $('#filter-subject').innerHTML='<option value="">Semua subjek</option>'+unique(records.map(r=>r.subject)).map(v=>`<option>${esc(v)}</option>`).join('');
     $('#filter-year').innerHTML='<option value="">Semua tahun</option>'+unique(records.map(r=>r.year)).map(v=>`<option value="${v}">Tahun ${v}</option>`).join('');
     $('#filter-classes').innerHTML=unique(records.map(r=>r.className)).map(v=>`<label><input type="checkbox" value="${esc(v)}">${esc(v)}</label>`).join('');
+  }
+  function populateReportControls(records){
+    const subjects=unique(records.map(r=>r.subject));
+    const years=unique(records.map(r=>r.year));
+    $('#report-subject').innerHTML='<option value="">Pilih subjek</option>'+subjects.map(v=>`<option>${esc(v)}</option>`).join('');
+    $('#report-year').innerHTML='<option value="">Pilih tahun</option>'+years.map(v=>`<option value="${v}">Tahun ${v}</option>`).join('');
+    $('#report-class').innerHTML='<option value="">Pilih kelas</option>';
+  }
+  function assignment(role, options={}){
+    const wantedRole=String(role).toUpperCase();
+    return teacherAssignments.filter(x=>x.role===wantedRole&&(!options.subject||x.subject===String(options.subject).toUpperCase())&&(!options.year||Number(x.year)===Number(options.year))&&(!options.className||x.className===String(options.className).toUpperCase()));
+  }
+  function teacherNames(items){return unique(items.map(x=>x.teacherName)).join(', ')||'Belum ditetapkan';}
+  function reportDistributionCells(d){return `<td>${d.TP1}</td><td>${d.TP2}</td><td>${d.TP3}</td><td>${d.TP4}</td><td>${d.TP5}</td><td>${d.TP6}</td>`;}
+  function reportHeader(title,meta){return `<header class="formal-report-header"><p>SEKOLAH KEBANGSAAN TEMIN</p><h2>${esc(title)}</h2><span>SESI ${esc(sessionValue())}</span><small>${esc(meta)}</small></header>`;}
+  function openFormalReport(title,subtitle,html){
+    $('#modal-eyebrow').textContent='LAPORAN RASMI PBD';$('#modal-title').textContent=title;$('#modal-subtitle').textContent=subtitle;
+    $('#modal-body').innerHTML=`<section id="formal-report" class="formal-report">${html}</section><button id="btn-print-formal-report" class="btn btn-primary formal-report-print" type="button">🖨️ Cetak / Simpan PDF</button>`;
+    document.body.classList.add('formal-report-open');openModal();
+  }
+  function closeFormalReportMode(){document.body.classList.remove('formal-report-open');}
+  function generateSubjectReport(){
+    const subject=$('#report-subject').value;if(!subject){alert('Pilih mata pelajaran dahulu.');return;}
+    const records=allRecords.filter(r=>r.subject===subject), summary=subjectSummaries(records)[0];if(!summary)return;
+    const panelHead=teacherNames(assignment('KETUA PANITIA',{subject}));
+    const subjectTeachers=teacherNames(assignment('GURU SUBJEK',{subject}));
+    const classGroups=new Map();records.forEach(r=>{const key=`${r.year}|${r.className}`;if(!classGroups.has(key))classGroups.set(key,[]);classGroups.get(key).push(r)});
+    const rows=[...classGroups.entries()].map(([key,items])=>{const [year,className]=key.split('|'),d=distribution(items),m=items.filter(isMastered).length,students=new Set(items.map(r=>r.studentName.trim().toUpperCase())).size,teacher=teacherNames(assignment('GURU SUBJEK',{subject,year,className}));return `<tr><td>Tahun ${year}</td><td>${esc(className)}</td><td>${esc(teacher)}</td><td>${students}</td>${reportDistributionCells(d)}<td>${items.length?(m/items.length*100).toFixed(1):'0.0'}%</td></tr>`}).sort((a,b)=>a.localeCompare(b,'ms',{numeric:true})).join('');
+    const html=`${reportHeader(`Analisis Mata Pelajaran ${subject}`,`Ketua Panitia: ${panelHead}`)}<div class="formal-meta-grid"><div><small>Ketua Panitia</small><strong>${esc(panelHead)}</strong></div><div><small>Guru Mata Pelajaran</small><strong>${esc(subjectTeachers)}</strong></div><div><small>Jumlah Murid</small><strong>${summary.students}</strong></div><div><small>Peratus Menguasai</small><strong>${summary.masteryRate.toFixed(1)}%</strong></div></div><h3>Rumusan Tahap Penguasaan</h3><table><thead><tr><th>TP1</th><th>TP2</th><th>TP3</th><th>TP4</th><th>TP5</th><th>TP6</th><th>Belum Menguasai</th><th>Menguasai</th></tr></thead><tbody><tr>${reportDistributionCells(summary.distribution)}<td>${summary.notMastered}</td><td>${summary.mastered}</td></tr></tbody></table><h3>Analisis Mengikut Kelas</h3><table><thead><tr><th>Tahun</th><th>Kelas</th><th>Guru Subjek</th><th>Murid</th><th>TP1</th><th>TP2</th><th>TP3</th><th>TP4</th><th>TP5</th><th>TP6</th><th>% Menguasai</th></tr></thead><tbody>${rows}</tbody></table><div class="formal-signature"><div>Disediakan oleh:<br><br><strong>${esc(panelHead)}</strong><br>Ketua Panitia ${esc(subject)}</div><div>Disemak oleh:<br><br>________________________<br>Pentadbir</div></div>`;
+    openFormalReport(`Analisis ${subject}`,`${summary.students} murid · ${summary.classes} kelas`,html);
+  }
+  function generateClassReport(){
+    const year=$('#report-year').value,className=$('#report-class').value;if(!year||!className){alert('Pilih tahun dan kelas dahulu.');return;}
+    const records=allRecords.filter(r=>Number(r.year)===Number(year)&&r.className===className),summaries=subjectSummaries(records);if(!summaries.length)return;
+    const classTeacher=teacherNames(assignment('GURU KELAS',{year,className}));
+    const rows=summaries.map(s=>{const teacher=teacherNames(assignment('GURU SUBJEK',{subject:s.subject,year,className}));return `<tr><td>${esc(s.subject)}</td><td>${esc(teacher)}</td><td>${s.students}</td>${reportDistributionCells(s.distribution)}<td>${s.masteryRate.toFixed(1)}%</td></tr>`}).join('');
+    const studentCount=new Set(records.map(r=>r.studentName.trim().toUpperCase())).size;
+    const html=`${reportHeader(`Analisis Kelas Tahun ${year} ${className}`,`Guru Kelas: ${classTeacher}`)}<div class="formal-meta-grid"><div><small>Guru Kelas</small><strong>${esc(classTeacher)}</strong></div><div><small>Jumlah Murid</small><strong>${studentCount}</strong></div><div><small>Jumlah Mata Pelajaran</small><strong>${summaries.length}</strong></div><div><small>Jumlah Rekod Pentaksiran</small><strong>${records.length}</strong></div></div><h3>Rumusan Mata Pelajaran</h3><table><thead><tr><th>Mata Pelajaran</th><th>Guru Subjek</th><th>Murid</th><th>TP1</th><th>TP2</th><th>TP3</th><th>TP4</th><th>TP5</th><th>TP6</th><th>% Menguasai</th></tr></thead><tbody>${rows}</tbody></table><div class="formal-signature"><div>Disediakan oleh:<br><br><strong>${esc(classTeacher)}</strong><br>Guru Kelas Tahun ${esc(year)} ${esc(className)}</div><div>Disemak oleh:<br><br>________________________<br>Pentadbir</div></div>`;
+    openFormalReport(`Analisis Tahun ${year} ${className}`,`${studentCount} murid · ${summaries.length} mata pelajaran`,html);
   }
   function updateFocusMode(){
     const isFocused = Boolean(filters.subject && filters.classes.size);
@@ -253,14 +293,18 @@
     $('#btn-show-all-subjects').onclick=()=>{filters.subject='';$('#filter-subject').value='';applyFilters()};
     $('#btn-presentation').onclick=()=>{document.body.classList.toggle('presentation-mode');$('#btn-presentation').textContent=document.body.classList.contains('presentation-mode')?'✕ Keluar Pembentangan':'🖥️ Mod Pembentangan';$('#presentation-summary').scrollIntoView({behavior:'smooth',block:'start'});};
     $('#btn-print-summary').onclick=()=>window.print();
+    $('#report-year').onchange=e=>{const year=e.target.value;const classes=unique(allRecords.filter(r=>!year||Number(r.year)===Number(year)).map(r=>r.className));$('#report-class').innerHTML='<option value="">Pilih kelas</option>'+classes.map(v=>`<option>${esc(v)}</option>`).join('');};
+    $('#btn-generate-subject-report').onclick=generateSubjectReport;
+    $('#btn-generate-class-report').onclick=generateClassReport;
   }
-  function render(summary){ const view=createViewModel(summary); currentSummary=summary; allRecords=window.PBDAnalysisCore.buildRecords(summary.items); filteredRecords=[...allRecords]; filters.subject=''; filters.year=''; filters.student=''; filters.classes.clear(); $('#welcome-screen').classList.add('hidden'); $('#app-screen').classList.remove('hidden'); $('#session-badge').textContent=view.sessionLabel; populateFilters(allRecords); bindFilters(); applyFilters(); }
+  function render(summary, assignments=[]){ const view=createViewModel(summary); currentSummary=summary; teacherAssignments=Array.isArray(assignments)?assignments:[]; allRecords=window.PBDAnalysisCore.buildRecords(summary.items); filteredRecords=[...allRecords]; filters.subject=''; filters.year=''; filters.student=''; filters.classes.clear(); $('#welcome-screen').classList.add('hidden'); $('#app-screen').classList.remove('hidden'); $('#session-badge').textContent=view.sessionLabel; populateFilters(allRecords);populateReportControls(allRecords); bindFilters(); applyFilters(); }
   function searchClasses(q){if(currentSummary && $('#class-table-body'))renderTable(currentSummary.items,q)}
   function reset(){currentSummary=null;allRecords=[];filteredRecords=[];selectedAnalysisYear=null;filters.classes.clear();closeModal();closeStudentDrawer();window.PBDCharts.destroyAll?.();subjectComparisonChart?.destroy();subjectComparisonChart=null;$('#app-screen').classList.add('hidden');$('#welcome-screen').classList.remove('hidden')}
-  $('#modal-close')?.addEventListener('click',closeModal); document.querySelector('[data-close-modal]')?.addEventListener('click',closeModal); $('#student-drawer-close')?.addEventListener('click',closeStudentDrawer); document.querySelector('[data-close-drawer]')?.addEventListener('click',closeStudentDrawer); document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeStudentDrawer();}});
+  $('#modal-close')?.addEventListener('click',()=>{closeModal();closeFormalReportMode()}); document.querySelector('[data-close-modal]')?.addEventListener('click',()=>{closeModal();closeFormalReportMode()}); $('#student-drawer-close')?.addEventListener('click',closeStudentDrawer); document.querySelector('[data-close-drawer]')?.addEventListener('click',closeStudentDrawer); document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeFormalReportMode();closeStudentDrawer();}});
   $('#modal-body')?.addEventListener('input',e=>{if(e.target.matches('#tp-student-search'))renderTPStudentCards(currentTPStudents,window.PBDDashboard.activeTP,e.target.value);if(e.target.matches('#mastery-list-search'))window.PBDDashboard.renderMasteryList?.(e.target.value)});
   $('#student-drawer')?.addEventListener('click',e=>{const tab=e.target.closest('[data-drawer-tab]');if(tab){if(tab.dataset.drawerTab==='achievement'){$('#student-drawer-body').innerHTML=achievementMarkup();setDrawerTab('achievement')}if(tab.dataset.drawerTab==='intervention')showInterventionTab();if(tab.dataset.drawerTab==='report')showReportTab();}if(e.target.closest('#btn-print-student-report'))window.print();});
   $('#student-drawer')?.addEventListener('submit',e=>{if(e.target.matches('#intervention-form')){e.preventDefault();saveIntervention(e.target);}});
+  $('#modal-body')?.addEventListener('click',e=>{if(e.target.closest('#btn-print-formal-report'))window.print();});
   document.addEventListener('click',e=>{const subjectCard=e.target.closest('[data-subject-overview]');if(subjectCard){filters.subject=subjectCard.dataset.subjectOverview;$('#filter-subject').value=filters.subject;applyFilters();setTimeout(()=>$('#subject-overview-grid')?.scrollIntoView({behavior:'smooth',block:'start'}),20);return;}if(e.target.closest('#mastered-summary-card')){showMasteryList(true);return;}if(e.target.closest('#not-mastered-summary-card')){showMasteryList(false);return;}const suggestion=e.target.closest('[data-search-student]');if(suggestion){$('#student-search').value=suggestion.dataset.searchStudent;hideStudentSuggestions();showStudentDetails(suggestion.dataset.searchStudent,suggestion.dataset.searchYear,suggestion.dataset.searchClass);return;}if(!e.target.closest('.student-search-label'))hideStudentSuggestions();const yearButton=e.target.closest('[data-analysis-year]');if(yearButton){selectedAnalysisYear=yearButton.dataset.analysisYear;renderAnalyses(filteredRecords);setTimeout(()=>$('#class-analysis-panel')?.scrollIntoView({behavior:'smooth',block:'start'}),20);return;}if(e.target.closest('#btn-close-class-analysis')){selectedAnalysisYear=null;renderAnalyses(filteredRecords);return;}const b=e.target.closest('[data-student]');if(b)showStudentDetails(b.dataset.student,b.dataset.year,b.dataset.class);if(e.target.closest('[data-back-tp]')&&window.PBDDashboard.activeTP)showTPDetails(window.PBDDashboard.activeTP)});
   window.PBDDashboard={activeTP:null,createViewModel,subjectSummaries,groupRecordsByStudent,render,searchClasses,showTPDetails,closeModal,closeStudentDrawer,reset};
 })();
