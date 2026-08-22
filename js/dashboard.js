@@ -14,6 +14,28 @@
   const esc = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const tpNo = tp => Number(String(tp || '').replace(/\D/g,'')) || 0;
   const isMastered = record => tpNo(record.tp) >= 3;
+  const SUBJECT_ORDER = ['BM','BI','MM','SAINS','SEJARAH','PAI','BA','RBT','PJPK','PMZ','PSV','PM'];
+  function subjectCode(subject) {
+    const value=String(subject||'').toUpperCase().replace(/[._-]/g,' ').replace(/\s+/g,' ').trim();
+    if (['BM','BAHASA MELAYU'].includes(value)) return 'BM';
+    if (['BI','BAHASA INGGERIS'].includes(value)) return 'BI';
+    if (['MM','MATEMATIK'].includes(value)) return 'MM';
+    if (value==='SAINS') return 'SAINS';
+    if (['SEJ','SEJARAH'].includes(value)) return 'SEJARAH';
+    if (['PAI','P ISLAM','PENDIDIKAN ISLAM'].includes(value)) return 'PAI';
+    if (['AR','BA','B ARAB','BAHASA ARAB'].includes(value)) return 'BA';
+    if (value==='RBT'||value==='REKA BENTUK DAN TEKNOLOGI') return 'RBT';
+    if (['PJPK','PJK','PJ'].includes(value)) return 'PJPK';
+    if (['PMZ','PENDIDIKAN MUZIK','MUZIK'].includes(value)) return 'PMZ';
+    if (['PSV','PENDIDIKAN SENI VISUAL'].includes(value)) return 'PSV';
+    if (['PM','PENDIDIKAN MORAL'].includes(value)) return 'PM';
+    return value;
+  }
+  function compareSubjects(a,b) {
+    const ai=SUBJECT_ORDER.indexOf(subjectCode(a)),bi=SUBJECT_ORDER.indexOf(subjectCode(b));
+    if (ai!==bi) return (ai<0?999:ai)-(bi<0?999:bi);
+    return String(a).localeCompare(String(b),'ms');
+  }
   function shortClassLabel(year, className) {
     const y = String(year || '').trim();
     let label = String(className || '').toUpperCase().replace(/SEKOLAH\s+KEBANGSAAN\s+TEMIN|SK\s*TEMIN/g, ' ').replace(/\b(TAHUN|DARJAH|KELAS)\b/g, ' ').replace(/[^A-Z0-9]+/g, ' ').trim();
@@ -36,7 +58,7 @@
   function renderMetricsFromRecords(records) {
     const studentKeys = new Set(records.map(r=>`${r.studentName}|${r.year}|${r.className}`));
     $('#metric-files').textContent = currentSummary?.school?.metadata?.totalFiles || 0;
-    $('#metric-classes').textContent = unique(records.map(r=>r.className)).length;
+    $('#metric-classes').textContent = unique(records.map(r=>`${r.year}|${r.className}`)).length;
     $('#metric-students').textContent = studentKeys.size.toLocaleString('ms-MY');
     $('#metric-subjects').textContent = unique(records.map(r=>r.subject)).length;
   }
@@ -62,7 +84,7 @@
       const mastered = items.filter(isMastered).length;
       const notMastered = items.length - mastered;
       return { subject, records: items.length, students: students.size, classes: classes.size, mastered, notMastered, masteryRate: items.length ? mastered / items.length * 100 : 0, distribution: distribution(items) };
-    }).sort((a,b) => a.subject.localeCompare(b.subject, 'ms'));
+    }).sort((a,b) => compareSubjects(a.subject,b.subject));
   }
   function renderSubjectOverview(records) {
     const summaries = subjectSummaries(records);
@@ -93,7 +115,19 @@
     $('#executive-mastered-count').textContent = `${mastered.toLocaleString('ms-MY')} rekod · TP3–TP6`;
     $('#executive-not-mastered-count').textContent = `${notMastered.toLocaleString('ms-MY')} rekod · TP1–TP2`;
     $('#subject-summary-body').innerHTML = summaries.map(item => `<tr data-summary-subject="${esc(item.subject)}"><td><button type="button" class="subject-table-link" data-subject-overview="${esc(item.subject)}">${esc(item.subject)}</button></td><td>${item.students}</td><td>${item.distribution.TP1}</td><td>${item.distribution.TP2}</td><td>${item.distribution.TP3}</td><td>${item.distribution.TP4}</td><td>${item.distribution.TP5}</td><td>${item.distribution.TP6}</td><td class="tm-cell">${item.notMastered}</td><td class="tm-cell"><strong>${(100-item.masteryRate).toFixed(1)}%</strong></td><td class="m-cell">${item.mastered}</td><td class="m-cell"><strong>${item.masteryRate.toFixed(1)}%</strong></td></tr>`).join('') || '<tr><td colspan="12">Tiada data.</td></tr>';
-    renderSubjectComparisonChart(summaries);
+    if (['utama','dialog'].includes(document.body.dataset.dashboardView)) renderSubjectComparisonChart(summaries);
+  }
+  function renderDialogPriorities(records) {
+    const body = $('#dialog-priority-body');
+    if (!body) return;
+    const summaries = subjectSummaries(records);
+    body.innerHTML = summaries.map((item,index) => {
+      const isCore = ['BM','BI','MM','SAINS','SEJARAH'].includes(subjectCode(item.subject));
+      const category = isCore
+        ? '<span class="priority-badge focus">Subjek teras</span>'
+        : '<span class="priority-badge">Mata pelajaran lain</span>';
+      return `<tr class="${isCore?'priority-row':''}"><td><span class="priority-rank">${index+1}</span></td><td><strong>${esc(item.subject)}</strong></td><td>${item.students}</td><td>${item.mastered}</td><td class="m-cell"><strong>${item.masteryRate.toFixed(1)}%</strong></td><td>${item.notMastered}</td><td class="tm-cell"><strong>${(100-item.masteryRate).toFixed(1)}%</strong></td><td>${category}</td></tr>`;
+    }).join('') || '<tr><td colspan="8">Tiada data untuk dipaparkan.</td></tr>';
   }
   function renderSubjectComparisonChart(summaries) {
     const canvas = $('#subject-comparison-chart');
@@ -148,9 +182,22 @@
   }
   function switchDashboardView(view){
     const wanted=String(view||'utama');
-    document.querySelectorAll('.dashboard-view[data-dashboard-view]').forEach(section=>section.classList.toggle('hidden',section.dataset.dashboardView!==wanted));
+    document.querySelectorAll('.dashboard-view[data-dashboard-view]').forEach(section=>{
+      const views=String(section.dataset.dashboardView||'').split(',').map(value=>value.trim());
+      section.classList.toggle('hidden',!views.includes(wanted));
+    });
     document.querySelectorAll('[data-dashboard-nav]').forEach(button=>button.classList.toggle('active',button.dataset.dashboardNav===wanted));
     document.body.dataset.dashboardView=wanted;
+    if (currentSummary && filteredRecords.length) {
+      if (wanted === 'utama' || wanted === 'dialog') {
+        renderExecutiveSummary(filteredRecords);
+        if (wanted === 'dialog') renderDialogPriorities(filteredRecords);
+      }
+      if (wanted === 'analisis') {
+        window.PBDCharts.renderYearChart(studentsByYear(filteredRecords));
+        window.PBDCharts.renderTPChart(distribution(filteredRecords),tp=>{window.PBDDashboard.activeTP=tp;showTPDetails(tp)});
+      }
+    }
     window.scrollTo({top:0,behavior:'smooth'});
   }
   function updateFocusMode(){
@@ -161,10 +208,13 @@
     filteredRecords=allRecords.filter(r=>(!filters.subject||r.subject===filters.subject)&&(!filters.year||Number(r.year)===Number(filters.year))&&(!filters.classes.size||filters.classes.has(r.className)));
     renderMetricsFromRecords(filteredRecords);
     if ($('#class-table-body')) renderTable(currentSummary.items,$('#class-search')?.value || '');
-    window.PBDCharts.renderYearChart(studentsByYear(filteredRecords));
-    window.PBDCharts.renderTPChart(distribution(filteredRecords),tp=>{window.PBDDashboard.activeTP=tp;showTPDetails(tp)});
+    if (document.body.dataset.dashboardView === 'analisis') {
+      window.PBDCharts.renderYearChart(studentsByYear(filteredRecords));
+      window.PBDCharts.renderTPChart(distribution(filteredRecords),tp=>{window.PBDDashboard.activeTP=tp;showTPDetails(tp)});
+    }
     renderSubjectOverview(filteredRecords);
     renderExecutiveSummary(filteredRecords);
+    renderDialogPriorities(filteredRecords);
     renderAnalyses(filteredRecords);
     updateFocusMode();
     renderStudentSuggestions($('#student-search')?.value || '');
@@ -298,7 +348,7 @@
     }
     $('#btn-reset-filters').onclick=()=>{filters.subject='';filters.year='';filters.student='';filters.classes.clear();$('#filter-subject').value='';$('#filter-year').value='';if($('#student-search'))$('#student-search').value='';hideStudentSuggestions();$('#filter-classes').querySelectorAll('input').forEach(x=>x.checked=false);applyFilters()};
     $('#btn-show-all-subjects').onclick=()=>{filters.subject='';$('#filter-subject').value='';applyFilters()};
-    $('#btn-presentation').onclick=()=>{switchDashboardView('analisis');document.body.classList.toggle('presentation-mode');$('#btn-presentation').textContent=document.body.classList.contains('presentation-mode')?'✕ Keluar Pembentangan':'🖥️ Mod Pembentangan';$('#presentation-summary').scrollIntoView({behavior:'smooth',block:'start'});};
+    $('#btn-presentation').onclick=()=>{switchDashboardView('dialog');document.body.classList.toggle('presentation-mode');$('#btn-presentation').textContent=document.body.classList.contains('presentation-mode')?'✕ Keluar Pembentangan':'🖥️ Mod Pembentangan';$('#presentation-summary').scrollIntoView({behavior:'smooth',block:'start'});};
     $('#btn-print-summary').onclick=()=>window.print();
     $('#report-year').onchange=e=>{const year=e.target.value;const classes=unique(allRecords.filter(r=>!year||Number(r.year)===Number(year)).map(r=>r.className));$('#report-class').innerHTML='<option value="">Pilih kelas</option>'+classes.map(v=>`<option>${esc(v)}</option>`).join('');};
     $('#btn-generate-subject-report').onclick=generateSubjectReport;
@@ -306,7 +356,7 @@
     document.querySelectorAll('[data-dashboard-nav]').forEach(button=>button.onclick=()=>switchDashboardView(button.dataset.dashboardNav));
     $('#sidebar-toggle')?.addEventListener('click',()=>document.body.classList.toggle('sidebar-collapsed'));
   }
-  function render(summary, assignments=[]){ const view=createViewModel(summary); currentSummary=summary; teacherAssignments=Array.isArray(assignments)?assignments:[]; allRecords=window.PBDAnalysisCore.buildRecords(summary.items); filteredRecords=[...allRecords]; filters.subject=''; filters.year=''; filters.student=''; filters.classes.clear(); $('#welcome-screen').classList.add('hidden'); $('#app-screen').classList.remove('hidden'); $('#session-badge').textContent=view.sessionLabel; populateFilters(allRecords);populateReportControls(allRecords); bindFilters(); applyFilters(); switchDashboardView('analisis'); }
+  function render(summary, assignments=[]){ const view=createViewModel(summary); currentSummary=summary; teacherAssignments=Array.isArray(assignments)?assignments:[]; allRecords=window.PBDAnalysisCore.buildRecords(summary.items); filteredRecords=[...allRecords]; filters.subject=''; filters.year=''; filters.student=''; filters.classes.clear(); $('#welcome-screen').classList.add('hidden'); $('#app-screen').classList.remove('hidden'); $('#session-badge').textContent=view.sessionLabel; populateFilters(allRecords);populateReportControls(allRecords); bindFilters(); switchDashboardView('utama'); applyFilters(); }
   function searchClasses(q){if(currentSummary && $('#class-table-body'))renderTable(currentSummary.items,q)}
   function reset(){currentSummary=null;allRecords=[];filteredRecords=[];selectedAnalysisYear=null;filters.classes.clear();closeModal();closeStudentDrawer();window.PBDCharts.destroyAll?.();subjectComparisonChart?.destroy();subjectComparisonChart=null;$('#app-screen').classList.add('hidden');$('#welcome-screen').classList.remove('hidden')}
   $('#modal-close')?.addEventListener('click',()=>{closeModal();closeFormalReportMode()}); document.querySelector('[data-close-modal]')?.addEventListener('click',()=>{closeModal();closeFormalReportMode()}); $('#student-drawer-close')?.addEventListener('click',closeStudentDrawer); document.querySelector('[data-close-drawer]')?.addEventListener('click',closeStudentDrawer); document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeFormalReportMode();closeStudentDrawer();}});
