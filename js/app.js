@@ -59,6 +59,7 @@
       const summary = window.PBDAnalysis.summarize(imported.results, imported.totalFiles, imported.errors);
       if (!summary.items.length) throw new Error('Data pusat tidak dapat dibentuk menjadi analisis.');
       window.PBDDashboard.render(summary, data.teacherAssignments || []);
+      window.dispatchEvent(new CustomEvent('sap-data-ready',{detail:{records:window.SAP_TEMIN_PORTAL_DATA?.records||[],teacherAssignments:data.teacherAssignments||[],session:String(data.session||''),activity:data.activity||'',updatedAt:data.updatedAt||''}}));
       $('#presentation-session').textContent = `SESI ${data.session || '—'}`;
       $('#presentation-subtitle').textContent = `${data.activity || 'Pentaksiran Bilik Darjah'} · data iDMe dikemas kini secara berpusat.`;
       const updated = data.updatedAt ? new Date(data.updatedAt).toLocaleString('ms-MY', {timeZone:'Asia/Kuala_Lumpur'}) : 'Tidak diketahui';
