@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="SAP-TEMIN — Sistem Analisis Pelaporan PBD SK Temin.">
-  <title>SAP-TEMIN v2.11 · Portal Analisis Guru</title>
+  <title>SAP-TEMIN v2.13 · Dashboard & Dialog Prestasi</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
@@ -16,7 +16,7 @@
       <img src="assets/logo-sk-temin.png" alt="Logo SK Temin" class="school-logo">
       <p class="eyebrow">SEKOLAH KEBANGSAAN TEMIN</p>
       <h1>Sistem Analisis PBD</h1>
-      <p class="version">Versi 2.11 · Portal Analisis Guru</p>
+      <p class="version">Versi 2.13 · Dashboard & Dialog Prestasi</p>
       <p class="intro">Data PBD diselaraskan oleh penyelaras sekolah. Guru tidak perlu memuat naik ZIP atau fail Excel.</p>
       <div class="central-loader" aria-live="polite">
         <span class="loader-ring" aria-hidden="true"></span>
@@ -48,8 +48,9 @@
       <aside class="dashboard-sidebar" aria-label="Menu analisis">
         <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-label="Buka atau tutup menu">☰</button>
         <nav>
-          <button class="dashboard-nav active" data-dashboard-nav="utama" type="button"><span>▦</span><b>Rumusan Subjek</b></button>
-          <button class="dashboard-nav" data-dashboard-nav="analisis" type="button"><span>◫</span><b>Analisis Terperinci</b></button>
+          <button class="dashboard-nav active" data-dashboard-nav="utama" type="button"><span>▦</span><b>Prestasi Sekolah</b></button>
+          <button class="dashboard-nav" data-dashboard-nav="dialog" type="button"><span>◉</span><b>Dialog Prestasi GB</b></button>
+          <button class="dashboard-nav" data-dashboard-nav="analisis" type="button"><span>◫</span><b>Analisis Subjek & Kelas</b></button>
           <button class="dashboard-nav" data-dashboard-nav="laporan" type="button"><span>▤</span><b>Pusat Laporan</b></button>
           <button class="dashboard-nav" data-dashboard-nav="murid" type="button"><span>♙</span><b>Murid & Intervensi</b></button>
         </nav>
@@ -75,14 +76,14 @@
         </div>
       </section>
 
-      <section class="metric-grid overview-section dashboard-view" data-dashboard-view="utama">
+      <section class="metric-grid overview-section dashboard-view hidden" data-dashboard-view="analisis">
         <article class="metric"><span>🔄</span><div><small>Kelas Diselaras</small><strong id="metric-files">0</strong></div></article>
         <article class="metric"><span>🏫</span><div><small>Kelas Dikesan</small><strong id="metric-classes">0</strong></div></article>
         <article class="metric"><span>👧🏻</span><div><small>Rekod Murid</small><strong id="metric-students">0</strong></div></article>
         <article class="metric"><span>📚</span><div><small>Subjek Dikesan</small><strong id="metric-subjects">0</strong></div></article>
       </section>
 
-      <section id="presentation-summary" class="panel presentation-summary-panel dashboard-view hidden" data-dashboard-view="analisis">
+      <section id="presentation-summary" class="panel presentation-summary-panel dashboard-view" data-dashboard-view="utama,dialog">
         <div class="presentation-heading">
           <div><small>RUMUSAN EKSEKUTIF PBD</small><h1 id="presentation-title">Prestasi Keseluruhan Sekolah</h1><p id="presentation-subtitle">Dijana secara langsung daripada data iDMe sesi aktif.</p></div>
           <span id="presentation-session" class="presentation-session">SESI —</span>
@@ -95,9 +96,14 @@
         </div>
       </section>
 
-      <section class="panel presentation-comparison-panel dashboard-view hidden" data-dashboard-view="analisis">
+      <section class="panel presentation-comparison-panel dashboard-view" data-dashboard-view="utama,dialog">
         <div class="panel-title"><div><small>PERBANDINGAN MATA PELAJARAN</small><h3>Peratus Menguasai dan Belum Menguasai</h3><p class="panel-help">Sesuai untuk pembentangan Guru Besar dan Dialog Prestasi.</p></div></div>
         <div class="chart-wrap subject-comparison-chart-wrap"><canvas id="subject-comparison-chart"></canvas></div>
+      </section>
+
+      <section class="panel dialog-priority-panel dashboard-view hidden" data-dashboard-view="dialog">
+        <div class="panel-title"><div><small>FOKUS DIALOG PRESTASI</small><h3>Keutamaan Mata Pelajaran</h3><p class="panel-help">Subjek teras dipaparkan dahulu mengikut urutan BM, BI, MM, Sains dan Sejarah, diikuti mata pelajaran lain. Prestasi setiap subjek menggunakan data semasa.</p></div><span class="session-badge">DATA SEMASA</span></div>
+        <div class="table-scroll"><table class="analysis-table dialog-priority-table"><thead><tr><th>Keutamaan</th><th>Mata Pelajaran</th><th>Murid</th><th>Menguasai</th><th>% Menguasai</th><th>Belum Menguasai</th><th>% Belum Menguasai</th><th>Kategori</th></tr></thead><tbody id="dialog-priority-body"></tbody></table></div>
       </section>
 
       <section class="panel presentation-matrix-panel dashboard-view hidden" data-dashboard-view="analisis">
@@ -105,7 +111,7 @@
         <div class="table-scroll"><table class="analysis-table presentation-table"><thead><tr><th>Mata Pelajaran</th><th>Murid</th><th>TP1</th><th>TP2</th><th>TP3</th><th>TP4</th><th>TP5</th><th>TP6</th><th class="tm-head">Belum Menguasai</th><th class="tm-head">% Belum Menguasai</th><th class="m-head">Menguasai</th><th class="m-head">% Menguasai</th></tr></thead><tbody id="subject-summary-body"></tbody></table></div>
       </section>
 
-      <section class="panel subject-overview-panel dashboard-view" data-dashboard-view="utama">
+      <section class="panel subject-overview-panel dashboard-view hidden" data-dashboard-view="analisis">
         <div class="panel-title">
           <div><small>RUMUSAN AUTOMATIK</small><h3>Analisis Keseluruhan Setiap Subjek</h3><p class="panel-help">Semua subjek dijana terus daripada data pusat yang diselaraskan oleh penyelaras.</p></div>
           <div class="subject-overview-actions"><span id="subject-overview-count" class="session-badge">0 subjek</span><button id="btn-show-all-subjects" class="btn btn-light compact-btn" type="button">Semua Subjek</button></div>
@@ -139,7 +145,7 @@
 
       <footer class="app-footer">
         <div class="footer-brand"><img src="assets/logo-sk-temin.png" alt="Logo SK Temin"><div><strong>SK TEMIN</strong><small>SISTEM ANALISIS PELAPORAN PBD</small></div></div>
-        <span>v2.11 · Data iDMe Pusat · <span id="updated-at">Belum dikemas kini</span></span>
+        <span>v2.13 · Data iDMe Pusat · <span id="updated-at">Belum dikemas kini</span></span>
       </footer>
       </section>
     </div>
