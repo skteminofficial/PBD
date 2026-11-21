@@ -60,3 +60,19 @@ export function tpMembers(people,tp,subject=''){
 export function outcomeMembers(people,subject,kind,threshold=35){
  return people.filter(p=>{const r=p.marks[subject];if(!r)return false;const valid=r.status==='OK'&&Number.isFinite(r.mark);return kind==='unknown'?!valid:valid&&(kind==='low'?r.mark<threshold:r.mark>=threshold);});
 }
+
+export function dashboardStats(people,subject='',threshold=35){
+ const marks=people.flatMap(p=>Object.values(p.marks).filter(r=>(!subject||r.subject===subject)&&r.status==='OK'&&Number.isFinite(r.mark)));
+ const tp=people.flatMap(p=>chartPbdRecords(p,subject));
+ const pbdAssessed=people.filter(p=>chartPbdRecords(p,subject).length);
+ const pbdLow=people.filter(p=>chartPbdRecords(p,subject).some(r=>/^TP[12]$/.test(r.tp)));
+ const markLow=people.filter(p=>Object.values(p.marks).some(r=>(!subject||r.subject===subject)&&r.status==='OK'&&Number.isFinite(r.mark)&&r.mark<threshold));
+ const markUnknown=people.filter(p=>{const rows=Object.values(p.marks).filter(r=>!subject||r.subject===subject);return !rows.length||rows.some(r=>r.status!=='OK'||!Number.isFinite(r.mark));});
+ return {marks,tp,pbdAssessed,pbdLow,markLow,markUnknown,avg:marks.length?marks.reduce((n,r)=>n+r.mark,0)/marks.length:null,mastery:tp.length?100*tp.filter(r=>Number(r.tp.slice(2))>=3).length/tp.length:null};
+}
+export function subjectSummary(people,subjects){
+ return subjects.map(subject=>{const marks=people.map(p=>p.marks[subject]).filter(r=>r?.status==='OK'&&Number.isFinite(r.mark));const tp=people.flatMap(p=>chartPbdRecords(p,subject));return {subject,marks:marks.length,average:marks.length?marks.reduce((n,r)=>n+r.mark,0)/marks.length:null,grades:['A','B','C','D','E','F'].map(g=>marks.filter(r=>r.grade===g).length),tp: [1,2,3,4,5,6].map(n=>tp.filter(r=>r.tp==='TP'+n).length)};});
+}
+export function summaryCsv(people,subjects,kind='pbd'){
+ const rows=subjectSummary(people,subjects);const out=[kind==='marks'?['Subjek','Bil. ditaksir','Purata','A','B','C','D','E','F']:['Subjek','Bil. ditaksir','TP1','TP2','TP3','TP4','TP5','TP6']];for(const r of rows)out.push(kind==='marks'?[r.subject,r.marks,r.average?.toFixed(2)??'',...r.grades]:[r.subject,r.tp.reduce((a,b)=>a+b,0),...r.tp]);return '\ufeff'+out.map(r=>r.map(csvCell).join(',')).join('\r\n');
+}
