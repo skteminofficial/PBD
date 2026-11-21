@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';import vm from 'node:vm';import fs from 'node:fs';
+const src=fs.readFileSync(new URL('../js/app.mjs',import.meta.url),'utf8');const code=src.slice(src.indexOf('async function sync('),src.indexOf('function formatDate('));
+function context(version='',replyVersion='v1'){const calls=[];const ctx={apiUrl:'https://example.test',state:{version,demo:false},calls,request:async action=>{calls.push(action);return {ok:true,apiVersion:'3.0.0',version:replyVersion,records:[]};},status:()=>{},toast:()=>{},formatDate:String,cached:async()=>{},setData:d=>{ctx.state=d;}};vm.createContext(ctx);vm.runInContext(code,ctx);return ctx;}
+test('Bukaan pertama memuat dataset sekali tanpa manifest',async()=>{const c=context();await c.sync();assert.deepEqual(c.calls,['dataset_v3']);assert.equal(c.state.version,'v1');});
+test('Cache versi sama tidak memuat turun dataset semula',async()=>{const c=context('v1');await c.sync();assert.deepEqual(c.calls,['manifest_v3']);});
+test('Versi baharu dan muat semula paksa mengikuti laluan yang betul',async()=>{const c=context('v0');await c.sync();assert.deepEqual(c.calls,['manifest_v3','dataset_v3']);const d=context('v1');await d.sync(true);assert.deepEqual(d.calls,['dataset_v3']);});
