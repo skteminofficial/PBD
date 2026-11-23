@@ -1,0 +1,46 @@
+import {csvCell} from './core.mjs?v=3.2.0';
+export const CLASS_NAMES=['DELTA','GAMMA','LAMBDA','SIGMA'];
+export function balancedRooms(n,count=4){return CLASS_NAMES.slice(0,count).map((name,i)=>({name,capacity:Math.floor(n/count)+(i<n%count?1:0)}));}
+export function placementStudents(people,basis){
+ const pbd=basis.startsWith('PBD');
+ return people.map(p=>{const records=Object.values(pbd?p.pbd:p.marks),valid=records.filter(r=>pbd?/^TP[1-6]$/.test(r.tp):r.status==='OK'&&Number.isFinite(r.mark));const counts=[6,5,4,3,2,1].map(n=>valid.filter(r=>r.tp==='TP'+n).length);return {key:p.key,name:p.name,sourceYear:p.year,sourceClass:p.className,subjects:records.map(r=>r.subject).sort().join('|'),eligible:records.length>0&&valid.length===records.length,vector:pbd?counts:[p.aCount,p.total],tpCounts:pbd?counts:null,total:pbd?null:p.total,average:pbd?null:p.average,aCount:pbd?null:p.aCount,sourceRank:p.rank||null};});
+}
+const cmp=(a,b)=>a.vector.reduce((n,v,i)=>n||b.vector[i]-v,0)||a.name.localeCompare(b.name,'ms')||a.key.localeCompare(b.key);
+export function validatePlan(plan){
+ if(!plan||plan.schema!=='sap-temin-placement@1'||!Array.isArray(plan.students)||plan.students.length>2000||!Array.isArray(plan.rooms)||plan.rooms.length<1||plan.rooms.length>4)throw Error('Draf penyusunan tidak sah.');
+ if(!/^20\d{2}$/.test(String(plan.targetSession))||!Number.isInteger(Number(plan.targetYear))||Number(plan.targetYear)<1||Number(plan.targetYear)>6)throw Error('Sesi atau tahun baharu tidak sah.');
+ if(!['COMBINED','UASA','MPT4','PBD_END','PBD_MID'].includes(plan.basis)||!['snake','round','elite','manual'].includes(plan.method)||!plan.assignments||Array.isArray(plan.assignments)||!plan.fixed||Array.isArray(plan.fixed)||!Array.isArray(plan.warnings)||plan.warnings.some(w=>typeof w!=='string'))throw Error('Struktur draf tidak lengkap.');
+ const keys=new Set();for(const p of plan.students){if(typeof p.key!=='string'||!p.key||['__proto__','constructor','prototype'].includes(p.key)||keys.has(p.key)||typeof p.name!=='string'||!Array.isArray(p.vector)||p.vector.length!==(plan.basis.startsWith('PBD')?6:2)||p.vector.some(x=>!Number.isFinite(x)))throw Error('Identiti atau keputusan murid dalam draf tidak sah.');keys.add(p.key);}
+ const names=new Set();for(const room of plan.rooms){if(!CLASS_NAMES.includes(room.name)||names.has(room.name)||!Number.isInteger(room.capacity)||room.capacity<0||room.capacity>2000)throw Error('Nama kelas mesti unik dan kuota mesti nombor bulat.');names.add(room.name);}
+ if(plan.rooms.reduce((s,r)=>s+r.capacity,0)<plan.students.length)throw Error('Jumlah kuota kelas kurang daripada bilangan murid.');
+ const counts=Object.fromEntries(plan.rooms.map(r=>[r.name,0]));for(const [key,name]of Object.entries(plan.assignments||{})){if(!keys.has(key)||!names.has(name))throw Error('Penempatan dalam draf tidak sah.');counts[name]++;}
+ for(const room of plan.rooms)if(counts[room.name]>room.capacity)throw Error('Kelas '+room.name+' melebihi kuota.');
+ for(const [key,name]of Object.entries(plan.fixed||{}))if(!keys.has(key)||!names.has(name)||plan.assignments?.[key]!==name)throw Error('Penempatan terkunci tidak sepadan.');return plan;
+}
+export function generatePlacement(students,settings,fixed={}){
+ const plan={schema:'sap-temin-placement@1',...settings,rooms:settings.rooms.map(r=>({...r})),students:students.map(p=>({...p,vector:[...p.vector]})),assignments:{},fixed:{},createdAt:new Date().toISOString(),warnings:[]};
+ validatePlan(plan);if(!['snake','round','elite','manual'].includes(plan.method))throw Error('Kaedah agihan tidak sah.');if(plan.method==='elite'&&(plan.rooms.length<2||!plan.rooms.some(r=>r.name===plan.eliteClass)))throw Error('Pilih kelas cemerlang dan sekurang-kurangnya dua kelas.');
+ const map=new Map(plan.students.map(p=>[p.key,p])),used=Object.fromEntries(plan.rooms.map(r=>[r.name,0]));for(const [key,name]of Object.entries(fixed)){if(!map.has(key)||!(name in used))throw Error('Penempatan tetap tidak sah.');plan.assignments[key]=name;plan.fixed[key]=name;used[name]++;}
+ validatePlan(plan);
+ // Only pupils with the same assessed subject set are compared automatically.
+ const cohorts=new Map();for(const p of students.filter(p=>p.eligible)){if(!cohorts.has(p.subjects))cohorts.set(p.subjects,[]);cohorts.get(p.subjects).push(p);}
+ const cohort=settings.cohort??[...cohorts.entries()].sort((a,b)=>b[1].length-a[1].length||a[0].localeCompare(b[0]))[0]?.[0]??'';plan.cohort=cohort;
+ let ordered=students.filter(p=>p.eligible&&p.subjects===cohort).sort(cmp);plan.order=Object.fromEntries(ordered.map((p,i)=>[p.key,i+1]));
+ const review=students.filter(p=>!p.eligible||p.subjects!==cohort);if(review.length)plan.warnings.push(review.length+' murid tiada keputusan lengkap atau kumpulan subjek berbeza: semak dan tempatkan secara manual.');
+ if(plan.method==='manual')return validatePlan(plan);
+ ordered=ordered.filter(p=>!plan.fixed[p.key]);
+ const put=(p,room)=>{plan.assignments[p.key]=room.name;used[room.name]++;};let rooms=plan.rooms;
+ if(plan.method==='elite'){
+  const elite=rooms.find(r=>r.name===plan.eliteClass),n=Math.max(0,elite.capacity-used[elite.name]);
+  if(n&&ordered[n-1]&&ordered[n]&&ordered[n-1].vector.every((v,i)=>v===ordered[n].vector[i]))plan.warnings.push('Keputusan seri pada sempadan kuota kelas cemerlang. Semak pilihan murid sebelum dimuktamadkan.');
+  ordered.splice(0,n).forEach(p=>put(p,elite));rooms=rooms.filter(r=>r.name!==elite.name);
+ }
+ const sequence=plan.method==='round'?rooms:rooms.concat([...rooms].reverse());let cursor=0;
+ for(const p of ordered){let placed=false;for(let tries=0;tries<sequence.length;tries++){const room=sequence[cursor++%sequence.length];if(used[room.name]<room.capacity){put(p,room);placed=true;break;}}if(!placed)plan.warnings.push('Tiada ruang kosong untuk baki murid. Semak kuota.');}
+ return validatePlan(plan);
+}
+export function movePlacement(plan,key,name){
+ const next={...plan,assignments:{...plan.assignments},fixed:{...plan.fixed}};if(!plan.students.some(p=>p.key===key))throw Error('Murid tidak ditemui.');if(name){next.assignments[key]=name;next.fixed[key]=name;}else{delete next.assignments[key];delete next.fixed[key];}return validatePlan(next);
+}
+export function placementSummary(plan){return plan.rooms.map(room=>{const pupils=plan.students.filter(p=>plan.assignments[p.key]===room.name),marked=pupils.filter(p=>Number.isFinite(p.average));return {...room,count:pupils.length,average:marked.length?marked.reduce((n,p)=>n+p.average,0)/marked.length:null,tpCounts:[0,0,0,0,0,0].map((_,i)=>pupils.reduce((n,p)=>n+(p.tpCounts?.[i]||0),0)),locked:pupils.filter(p=>plan.fixed[p.key]).length};});}
+export function placementCsv(plan){validatePlan(plan);const out=[['Sesi baharu','Tahun baharu','Kelas cadangan','Nama murid','Kelas asal','Turutan agihan','Bil. A','Jumlah','TP6','TP5','TP4','TP3','TP2','TP1','Status']];for(const room of [...plan.rooms,{name:''}])for(const p of plan.students.filter(p=>(plan.assignments[p.key]||'')===room.name).sort((a,b)=>a.name.localeCompare(b.name,'ms')))out.push([plan.targetSession,plan.targetYear,room.name||'BELUM DITEMPATKAN',p.name,p.sourceYear+' '+p.sourceClass,plan.order?.[p.key]||'',p.aCount??'',p.total??'',...(p.tpCounts||['','','','','','']),plan.fixed[p.key]?'TETAP / MANUAL':room.name?'CADANGAN':'SEMAK MANUAL']);return '\ufeff'+out.map(r=>r.map(csvCell).join(',')).join('\r\n');}
