@@ -1,4 +1,4 @@
-import {csvCell} from './core.mjs?v=3.2.4';
+import {csvCell} from './core.mjs?v=3.2.5';
 export const CLASS_NAMES=['DELTA','GAMMA','LAMBDA','SIGMA'];
 export function balancedRooms(n,count=4){return CLASS_NAMES.slice(0,count).map((name,i)=>({name,capacity:Math.floor(n/count)+(i<n%count?1:0)}));}
 export function placementStudents(people,basis,selectedSubjects=null){
@@ -7,8 +7,9 @@ export function placementStudents(people,basis,selectedSubjects=null){
   const records=Object.values(pbd?p.pbd:p.marks).filter(r=>scope===null||scope.includes(r.subject));
   const valid=records.filter(r=>pbd?/^TP[1-6]$/.test(r.tp):r.status==='OK'&&Number.isFinite(r.mark));
   const counts=[6,5,4,3,2,1].map(n=>valid.filter(r=>r.tp==='TP'+n).length);
+  const gradeCounts=['A','B','C','D','E','F'].map(g=>valid.filter(r=>r.grade===g).length);
   const total=valid.reduce((n,r)=>n+(r.mark||0),0),aCount=valid.filter(r=>r.grade==='A').length;
-  return {key:p.key,name:p.name,sourceYear:p.year,sourceClass:p.className,subjects:records.map(r=>r.subject).sort().join('|'),eligible:records.length>0&&valid.length===records.length&&(scope===null||scope.every(s=>valid.some(r=>r.subject===s))),vector:pbd?counts:[aCount,total],tpCounts:pbd?counts:null,total:pbd?null:total,average:pbd||!valid.length?null:total/valid.length,aCount:pbd?null:aCount,sourceRank:scope===null?p.rank||null:null};
+  return {key:p.key,name:p.name,sourceYear:p.year,sourceClass:p.className,subjects:records.map(r=>r.subject).sort().join('|'),eligible:records.length>0&&valid.length===records.length&&(scope===null||scope.every(s=>valid.some(r=>r.subject===s))),vector:pbd?counts:[...gradeCounts,total],gradeCounts:pbd?null:gradeCounts,tpCounts:pbd?counts:null,total:pbd?null:total,average:pbd||!valid.length?null:total/valid.length,aCount:pbd?null:aCount,sourceRank:scope===null?p.rank||null:null};
  });
 }
 
@@ -17,7 +18,7 @@ export function validatePlan(plan){
  if(!plan||plan.schema!=='sap-temin-placement@1'||!Array.isArray(plan.students)||plan.students.length>2000||!Array.isArray(plan.rooms)||plan.rooms.length<1||plan.rooms.length>4)throw Error('Draf penyusunan tidak sah.');
  if(!/^20\d{2}$/.test(String(plan.targetSession))||!Number.isInteger(Number(plan.targetYear))||Number(plan.targetYear)<1||Number(plan.targetYear)>6)throw Error('Sesi atau tahun baharu tidak sah.');
  if(!['COMBINED','UASA','MPT4','PBD_END','PBD_MID'].includes(plan.basis)||!['snake','round','elite','manual'].includes(plan.method)||!plan.assignments||Array.isArray(plan.assignments)||!plan.fixed||Array.isArray(plan.fixed)||!Array.isArray(plan.warnings)||plan.warnings.some(w=>typeof w!=='string'))throw Error('Struktur draf tidak lengkap.');
- const keys=new Set();for(const p of plan.students){if(typeof p.key!=='string'||!p.key||['__proto__','constructor','prototype'].includes(p.key)||keys.has(p.key)||typeof p.name!=='string'||!Array.isArray(p.vector)||p.vector.length!==(plan.basis.startsWith('PBD')?6:2)||p.vector.some(x=>!Number.isFinite(x)))throw Error('Identiti atau keputusan murid dalam draf tidak sah.');keys.add(p.key);}
+ const keys=new Set();for(const p of plan.students){if(typeof p.key!=='string'||!p.key||['__proto__','constructor','prototype'].includes(p.key)||keys.has(p.key)||typeof p.name!=='string'||!Array.isArray(p.vector)||!(plan.basis.startsWith('PBD')?[6]:[2,7]).includes(p.vector.length)||p.vector.some(x=>!Number.isFinite(x)))throw Error('Identiti atau keputusan murid dalam draf tidak sah.');keys.add(p.key);}
  const names=new Set();for(const room of plan.rooms){if(!CLASS_NAMES.includes(room.name)||names.has(room.name)||!Number.isInteger(room.capacity)||room.capacity<0||room.capacity>2000)throw Error('Nama kelas mesti unik dan kuota mesti nombor bulat.');names.add(room.name);}
  if(plan.rooms.reduce((s,r)=>s+r.capacity,0)<plan.students.length)throw Error('Jumlah kuota kelas kurang daripada bilangan murid.');
  const counts=Object.fromEntries(plan.rooms.map(r=>[r.name,0]));for(const [key,name]of Object.entries(plan.assignments||{})){if(!keys.has(key)||!names.has(name))throw Error('Penempatan dalam draf tidak sah.');counts[name]++;}
