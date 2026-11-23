@@ -1,10 +1,17 @@
-import {csvCell} from './core.mjs?v=3.2.1';
+import {csvCell} from './core.mjs?v=3.2.2';
 export const CLASS_NAMES=['DELTA','GAMMA','LAMBDA','SIGMA'];
 export function balancedRooms(n,count=4){return CLASS_NAMES.slice(0,count).map((name,i)=>({name,capacity:Math.floor(n/count)+(i<n%count?1:0)}));}
-export function placementStudents(people,basis){
- const pbd=basis.startsWith('PBD');
- return people.map(p=>{const records=Object.values(pbd?p.pbd:p.marks),valid=records.filter(r=>pbd?/^TP[1-6]$/.test(r.tp):r.status==='OK'&&Number.isFinite(r.mark));const counts=[6,5,4,3,2,1].map(n=>valid.filter(r=>r.tp==='TP'+n).length);return {key:p.key,name:p.name,sourceYear:p.year,sourceClass:p.className,subjects:records.map(r=>r.subject).sort().join('|'),eligible:records.length>0&&valid.length===records.length,vector:pbd?counts:[p.aCount,p.total],tpCounts:pbd?counts:null,total:pbd?null:p.total,average:pbd?null:p.average,aCount:pbd?null:p.aCount,sourceRank:p.rank||null};});
+export function placementStudents(people,basis,selectedSubjects=null){
+ const pbd=basis.startsWith('PBD'),scope=Array.isArray(selectedSubjects)?[...new Set(selectedSubjects)]:null;
+ return people.map(p=>{
+  const records=Object.values(pbd?p.pbd:p.marks).filter(r=>scope===null||scope.includes(r.subject));
+  const valid=records.filter(r=>pbd?/^TP[1-6]$/.test(r.tp):r.status==='OK'&&Number.isFinite(r.mark));
+  const counts=[6,5,4,3,2,1].map(n=>valid.filter(r=>r.tp==='TP'+n).length);
+  const total=valid.reduce((n,r)=>n+(r.mark||0),0),aCount=valid.filter(r=>r.grade==='A').length;
+  return {key:p.key,name:p.name,sourceYear:p.year,sourceClass:p.className,subjects:records.map(r=>r.subject).sort().join('|'),eligible:records.length>0&&valid.length===records.length&&(scope===null||scope.every(s=>valid.some(r=>r.subject===s))),vector:pbd?counts:[aCount,total],tpCounts:pbd?counts:null,total:pbd?null:total,average:pbd||!valid.length?null:total/valid.length,aCount:pbd?null:aCount,sourceRank:scope===null?p.rank||null:null};
+ });
 }
+
 const cmp=(a,b)=>a.vector.reduce((n,v,i)=>n||b.vector[i]-v,0)||a.name.localeCompare(b.name,'ms')||a.key.localeCompare(b.key);
 export function validatePlan(plan){
  if(!plan||plan.schema!=='sap-temin-placement@1'||!Array.isArray(plan.students)||plan.students.length>2000||!Array.isArray(plan.rooms)||plan.rooms.length<1||plan.rooms.length>4)throw Error('Draf penyusunan tidak sah.');
@@ -43,4 +50,4 @@ export function movePlacement(plan,key,name){
  const next={...plan,assignments:{...plan.assignments},fixed:{...plan.fixed}};if(!plan.students.some(p=>p.key===key))throw Error('Murid tidak ditemui.');if(name){next.assignments[key]=name;next.fixed[key]=name;}else{delete next.assignments[key];delete next.fixed[key];}return validatePlan(next);
 }
 export function placementSummary(plan){return plan.rooms.map(room=>{const pupils=plan.students.filter(p=>plan.assignments[p.key]===room.name),marked=pupils.filter(p=>Number.isFinite(p.average));return {...room,count:pupils.length,average:marked.length?marked.reduce((n,p)=>n+p.average,0)/marked.length:null,tpCounts:[0,0,0,0,0,0].map((_,i)=>pupils.reduce((n,p)=>n+(p.tpCounts?.[i]||0),0)),locked:pupils.filter(p=>plan.fixed[p.key]).length};});}
-export function placementCsv(plan){validatePlan(plan);const out=[['Sesi baharu','Tahun baharu','Kelas cadangan','Nama murid','Kelas asal','Turutan agihan','Bil. A','Jumlah','TP6','TP5','TP4','TP3','TP2','TP1','Status']];for(const room of [...plan.rooms,{name:''}])for(const p of plan.students.filter(p=>(plan.assignments[p.key]||'')===room.name).sort((a,b)=>a.name.localeCompare(b.name,'ms')))out.push([plan.targetSession,plan.targetYear,room.name||'BELUM DITEMPATKAN',p.name,p.sourceYear+' '+p.sourceClass,plan.order?.[p.key]||'',p.aCount??'',p.total??'',...(p.tpCounts||['','','','','','']),plan.fixed[p.key]?'TETAP / MANUAL':room.name?'CADANGAN':'SEMAK MANUAL']);return '\ufeff'+out.map(r=>r.map(csvCell).join(',')).join('\r\n');}
+export function placementCsv(plan){validatePlan(plan);const out=[['Sesi baharu','Tahun baharu','Kelas cadangan','Nama murid','Kelas asal','Turutan agihan','Bil. A','Jumlah','TP6','TP5','TP4','TP3','TP2','TP1','Status','Subjek pengiraan']];for(const room of [...plan.rooms,{name:''}])for(const p of plan.students.filter(p=>(plan.assignments[p.key]||'')===room.name).sort((a,b)=>a.name.localeCompare(b.name,'ms')))out.push([plan.targetSession,plan.targetYear,room.name||'BELUM DITEMPATKAN',p.name,p.sourceYear+' '+p.sourceClass,plan.order?.[p.key]||'',p.aCount??'',p.total??'',...(p.tpCounts||['','','','','','']),plan.fixed[p.key]?'TETAP / MANUAL':room.name?'CADANGAN':'SEMAK MANUAL',Array.isArray(plan.selectedSubjects)?plan.selectedSubjects.join(', '):'Semua subjek']);return '\ufeff'+out.map(r=>r.map(csvCell).join(',')).join('\r\n');}
