@@ -1,4 +1,4 @@
-import {csvCell} from './core.mjs?v=3.2.3';
+import {csvCell} from './core.mjs?v=3.2.4';
 export const CLASS_NAMES=['DELTA','GAMMA','LAMBDA','SIGMA'];
 export function balancedRooms(n,count=4){return CLASS_NAMES.slice(0,count).map((name,i)=>({name,capacity:Math.floor(n/count)+(i<n%count?1:0)}));}
 export function placementStudents(people,basis,selectedSubjects=null){
