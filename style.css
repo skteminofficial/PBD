@@ -139,3 +139,4 @@ main#main{padding-top:0}.page-heading{margin:24px 0 10px;align-items:center}.pag
 .grade-counts{display:block;font-size:.65rem;color:var(--muted);white-space:nowrap;margin-top:5px}
 .core-pbd-table .pbd-justification{white-space:normal;min-width:240px;max-width:330px;text-align:left;line-height:1.5;font-size:.8rem}
 @media print{.core-pbd-table{min-width:0;width:100%}.core-pbd-table .pbd-justification{min-width:0;max-width:70mm;font-size:8pt}}
+.exam-priority{white-space:normal;min-width:150px;max-width:220px;line-height:1.4}
