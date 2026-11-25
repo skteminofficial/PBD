@@ -153,3 +153,11 @@ main#main{padding-top:0}.page-heading{margin:24px 0 10px;align-items:center}.pag
 }
 @media print{html{background:white!important}}
 @media print{#placement-print .print-class.compact table{font-size:7pt}#placement-print .print-class.compact td,#placement-print .print-class.compact th{font-size:7pt;padding:.2mm .8mm;line-height:1.1}}
+
+/* On-demand navigation leaves the marks unobstructed. */
+.bottom-nav{transition:transform .2s ease,opacity .2s ease,visibility .2s}
+.bottom-nav.nav-collapsed{transform:translate(-50%,calc(100% + 24px));opacity:0;visibility:hidden;pointer-events:none}
+.nav-toggle{position:fixed;right:max(12px,env(safe-area-inset-right));bottom:calc(10px + env(safe-area-inset-bottom));z-index:21;border:1px solid var(--line);border-radius:18px;padding:8px 12px;min-height:36px;background:var(--paper);color:var(--teal);font-size:.75rem;font-weight:700;box-shadow:0 3px 14px #0b27361c;cursor:pointer}
+body.menu-expanded .nav-toggle{bottom:calc(96px + env(safe-area-inset-bottom))}
+@media(prefers-reduced-motion:reduce){.bottom-nav{transition:none}}
+@media print{.nav-toggle{display:none!important}}
