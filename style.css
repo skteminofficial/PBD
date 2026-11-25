@@ -140,3 +140,16 @@ main#main{padding-top:0}.page-heading{margin:24px 0 10px;align-items:center}.pag
 .core-pbd-table .pbd-justification{white-space:normal;min-width:240px;max-width:330px;text-align:left;line-height:1.5;font-size:.8rem}
 @media print{.core-pbd-table{min-width:0;width:100%}.core-pbd-table .pbd-justification{min-width:0;max-width:70mm;font-size:8pt}}
 .exam-priority{white-space:normal;min-width:150px;max-width:220px;line-height:1.4}
+@media print{
+ #placement-print .evidence-page h2{font-size:11pt;margin:2mm 0}
+ #placement-print .evidence-caption{font-size:7pt;line-height:1.3;margin:2mm 0}
+ #placement-print .evidence-page header p{line-height:1.3;font-size:7pt}
+ #placement-print .evidence-table{table-layout:fixed;font-size:7pt}
+ #placement-print .evidence-table th,#placement-print .evidence-table td{padding:.7mm .5mm;line-height:1.15;text-align:center;font-size:7pt;overflow-wrap:anywhere}
+ #placement-print .evidence-table th:first-child,#placement-print .evidence-table th:last-child{width:auto}
+ #placement-print .evidence-table td:nth-child(2){text-align:left;font-weight:600}
+ #placement-print .evidence-table small{display:block;font-size:6.2pt;line-height:1.15;font-weight:400;margin-top:.4mm}
+ #placement-print .evidence-page footer{font-size:6.5pt;line-height:1.3}
+}
+@media print{html{background:white!important}}
+@media print{#placement-print .print-class.compact table{font-size:7pt}#placement-print .print-class.compact td,#placement-print .print-class.compact th{font-size:7pt;padding:.2mm .8mm;line-height:1.1}}
